@@ -2,12 +2,11 @@ import Razorpay from 'razorpay'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-})
-
 export async function POST(request) {
+  const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  })
   const token = request.headers.get('authorization')?.split(' ')[1]
   if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
