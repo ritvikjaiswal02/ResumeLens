@@ -1,51 +1,118 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-/* ─── Helpers ─────────────────────────────────────────────────────────── */
+/* ─── Helpers ─── */
 const stripMarkdown = (text) =>
   text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
 
-const severityStyle = {
-  fix:  { border: 'border-l-red-500',   bg: 'bg-red-50',   badge: 'bg-red-100 text-red-700'    },
-  warn: { border: 'border-l-amber-500', bg: 'bg-amber-50', badge: 'bg-amber-100 text-amber-700' },
-  ok:   { border: 'border-l-green-500', bg: 'bg-green-50', badge: 'bg-green-100 text-green-700' },
+const severityConfig = {
+  fix:  { color: 'var(--danger)',  bg: 'rgba(248,113,113,0.06)',  borderColor: '#f87171',  label: 'Fix'     },
+  warn: { color: 'var(--warn)',    bg: 'rgba(251,146,60,0.06)',   borderColor: '#fb923c',  label: 'Warning' },
+  ok:   { color: 'var(--success)', bg: 'rgba(74,222,128,0.06)',   borderColor: '#4ade80',  label: 'Good'    },
 }
 
-/* ─── ScoreRing ───────────────────────────────────────────────────────── */
+/* ─── ScoreRing ─── */
 function ScoreRing({ score }) {
-  const radius = 80
+  const [drawn, setDrawn] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDrawn(true), 120)
+    return () => clearTimeout(t)
+  }, [])
+
+  const radius       = 76
   const circumference = 2 * Math.PI * radius
-  const offset = circumference - (score / 100) * circumference
-  const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444'
-  const verdict =
-    score >= 85 ? 'Strong' : score >= 70 ? 'Good' : score >= 40 ? 'Needs Work' : 'Poor'
+  const targetOffset  = circumference - (score / 100) * circumference
+  const currentOffset = drawn ? targetOffset : circumference
+
+  const color = score >= 85
+    ? 'var(--accent)'
+    : score >= 70
+    ? 'var(--success)'
+    : score >= 40
+    ? 'var(--warn)'
+    : 'var(--danger)'
+
+  const rawColor = score >= 85 ? '#e9b94c'
+    : score >= 70 ? '#4ade80'
+    : score >= 40 ? '#fb923c'
+    : '#f87171'
+
+  const verdict = score >= 85 ? 'Strong Match'
+    : score >= 70 ? 'Good Match'
+    : score >= 40 ? 'Needs Work'
+    : 'Poor Match'
 
   return (
-    <div className="flex flex-col items-center gap-2 shrink-0">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">ATS Match Score</p>
-      <svg width="200" height="200" viewBox="0 0 200 200">
-        <circle cx="100" cy="100" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="14" />
-        <circle
-          cx="100" cy="100" r={radius}
-          fill="none" stroke={color} strokeWidth="14"
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          strokeLinecap="round" transform="rotate(-90 100 100)"
-        />
-        <text x="100" y="93" textAnchor="middle" fontSize="44" fontWeight="700" fill="#111827">{score}</text>
-        <text x="100" y="117" textAnchor="middle" fontSize="14" fill="#9ca3af">/ 100</text>
-      </svg>
-      <span
-        className="text-sm font-semibold px-4 py-1 rounded-full"
-        style={{ background: color + '22', color }}
-      >
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
+      <p style={{
+        fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em',
+        textTransform: 'uppercase', color: 'var(--dim)',
+      }}>
+        ATS Match Score
+      </p>
+
+      <div style={{ position: 'relative' }}>
+        {/* Ambient glow behind ring */}
+        <div style={{
+          position: 'absolute', inset: '-12px', borderRadius: '50%',
+          background: `radial-gradient(circle, ${rawColor}28 0%, transparent 70%)`,
+          pointerEvents: 'none',
+          transition: 'opacity 0.8s ease',
+          opacity: drawn ? 1 : 0,
+          animation: drawn ? 'glowPulse 2.4s ease-in-out infinite' : 'none',
+        }} />
+
+        <svg width="196" height="196" viewBox="0 0 196 196">
+          {/* Track */}
+          <circle cx="98" cy="98" r={radius} fill="none" stroke="var(--surface-3)" strokeWidth="11" />
+          {/* Tick marks */}
+          {[0, 25, 50, 75].map((pct) => {
+            const angle = (pct / 100) * 360 - 90
+            const rad   = angle * (Math.PI / 180)
+            const x1 = 98 + (radius - 7) * Math.cos(rad)
+            const y1 = 98 + (radius - 7) * Math.sin(rad)
+            const x2 = 98 + (radius + 7) * Math.cos(rad)
+            const y2 = 98 + (radius + 7) * Math.sin(rad)
+            return <line key={pct} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--border)" strokeWidth="1.5" />
+          })}
+          {/* Progress arc */}
+          <circle
+            cx="98" cy="98" r={radius}
+            fill="none" stroke={rawColor} strokeWidth="11"
+            strokeDasharray={circumference}
+            strokeDashoffset={currentOffset}
+            strokeLinecap="round"
+            transform="rotate(-90 98 98)"
+            style={{ transition: 'stroke-dashoffset 1.3s cubic-bezier(0.34, 1.4, 0.64, 1)' }}
+          />
+          {/* Score number */}
+          <text x="98" y="88" textAnchor="middle" fontSize="50" fontWeight="700"
+            fill="var(--text)" fontFamily="var(--font-display, Georgia), serif"
+            style={{ transition: 'opacity 0.5s ease', opacity: drawn ? 1 : 0 }}>
+            {score}
+          </text>
+          <text x="98" y="112" textAnchor="middle" fontSize="12" fill="var(--dim)">
+            out of 100
+          </text>
+        </svg>
+      </div>
+
+      <span style={{
+        fontSize: '0.8125rem', fontWeight: 700,
+        padding: '5px 16px', borderRadius: '100px',
+        background: rawColor + '1a', color,
+        letterSpacing: '-0.01em',
+        border: `1px solid ${rawColor}33`,
+      }}>
         {verdict}
       </span>
     </div>
   )
 }
 
-/* ─── CopyButton ──────────────────────────────────────────────────────── */
+/* ─── CopyButton ─── */
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false)
   return (
@@ -55,95 +122,220 @@ function CopyButton({ text }) {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }}
-      className="shrink-0 text-xs px-3 py-1.5 rounded-md border border-gray-300 bg-white
-                 hover:bg-gray-50 hover:border-gray-400 transition-colors whitespace-nowrap
-                 font-medium text-gray-600"
+      style={{
+        flexShrink: 0, fontSize: '0.75rem', fontWeight: 600,
+        padding: '6px 14px', borderRadius: '8px',
+        border: `1px solid ${copied ? 'rgba(74,222,128,0.35)' : 'var(--border)'}`,
+        background: copied ? 'rgba(74,222,128,0.1)' : 'var(--surface-3)',
+        color: copied ? 'var(--success)' : 'var(--muted)',
+        cursor: 'pointer', whiteSpace: 'nowrap',
+        transition: 'all 0.2s',
+      }}
     >
-      {copied ? '✓ Copied!' : 'Copy to clipboard'}
+      {copied ? '✓ Copied' : 'Copy'}
     </button>
   )
 }
 
-/* ─── AnalysisResults ─────────────────────────────────────────────────── */
+/* ─── SectionHeader ─── */
+function SectionHeader({ title, count, countColor }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+      <h2 className="font-display" style={{
+        fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.02em',
+      }}>
+        {title}
+      </h2>
+      {count != null && (
+        <span style={{
+          fontSize: '0.72rem', fontWeight: 700,
+          padding: '2px 9px', borderRadius: '100px',
+          background: countColor + '18', color: countColor,
+          border: `1px solid ${countColor}30`,
+        }}>
+          {count}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/* ─── AnalysisResults ─── */
 export default function AnalysisResults({ result }) {
   if (!result) return null
 
   return (
-    <div className="space-y-10">
-      <div className="border-t border-gray-200 pt-10">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '44px' }}>
+
+      {/* ── Score + Keywords ── */}
+      <div>
+        <div style={{
+          display: 'flex', flexDirection: 'row', gap: '28px',
+          alignItems: 'flex-start', flexWrap: 'wrap',
+        }}>
+          {/* Score Ring */}
           <ScoreRing score={result.score} />
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-            <div className="rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">Matched Keywords</h3>
-                <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                  {result.keywords?.matched?.length ?? 0} matched
+
+          {/* Keyword Cards */}
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', minWidth: 0 }}>
+
+            {/* Matched */}
+            <div style={{
+              background: 'var(--surface-2)', border: '1px solid var(--border)',
+              borderRadius: '14px', padding: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <h3 style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Matched
+                </h3>
+                <span style={{
+                  fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px',
+                  background: 'rgba(74,222,128,0.12)', color: 'var(--success)',
+                  border: '1px solid rgba(74,222,128,0.2)',
+                }}>
+                  {result.keywords?.matched?.length ?? 0}
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {result.keywords?.matched?.map((kw) => (
-                  <span key={kw} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">{kw}</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {result.keywords?.matched?.map((kw, i) => (
+                  <span key={kw} className="anim-chip" style={{ animationDelay: `${i * 35}ms` }}>
+                    <span style={{
+                      display: 'inline-block', fontSize: '0.72rem', fontWeight: 600,
+                      padding: '3px 9px', borderRadius: '100px',
+                      background: 'rgba(74,222,128,0.1)', color: 'var(--success)',
+                      border: '1px solid rgba(74,222,128,0.2)',
+                    }}>
+                      {kw}
+                    </span>
+                  </span>
                 ))}
               </div>
             </div>
-            <div className="rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">Missing Keywords</h3>
-                <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
-                  {result.keywords?.missing?.length ?? 0} missing
+
+            {/* Missing */}
+            <div style={{
+              background: 'var(--surface-2)', border: '1px solid var(--border)',
+              borderRadius: '14px', padding: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <h3 style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  Missing
+                </h3>
+                <span style={{
+                  fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px',
+                  background: 'rgba(248,113,113,0.12)', color: 'var(--danger)',
+                  border: '1px solid rgba(248,113,113,0.2)',
+                }}>
+                  {result.keywords?.missing?.length ?? 0}
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {result.keywords?.missing?.map((kw) => (
-                  <span key={kw} className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">{kw}</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {result.keywords?.missing?.map((kw, i) => (
+                  <span key={kw} className="anim-chip" style={{ animationDelay: `${i * 35}ms` }}>
+                    <span style={{
+                      display: 'inline-block', fontSize: '0.72rem', fontWeight: 600,
+                      padding: '3px 9px', borderRadius: '100px',
+                      background: 'rgba(248,113,113,0.1)', color: 'var(--danger)',
+                      border: '1px solid rgba(248,113,113,0.2)',
+                    }}>
+                      {kw}
+                    </span>
+                  </span>
                 ))}
               </div>
             </div>
+
           </div>
         </div>
       </div>
 
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Insights</h2>
-        <div className="space-y-3">
-          {result.insights?.map((ins, i) => {
-            const s = severityStyle[ins.severity] ?? severityStyle.ok
-            return (
-              <div key={i} className={`border-l-4 ${s.border} ${s.bg} rounded-r-xl p-5`}>
-                <div className="flex items-center gap-2.5 mb-2">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full tracking-wide ${s.badge}`}>
-                    {ins.severity.toUpperCase()}
-                  </span>
-                  <span className="text-sm font-semibold text-gray-800">{ins.title}</span>
+      {/* ── Insights ── */}
+      {result.insights?.length > 0 && (
+        <div>
+          <SectionHeader title="Insights" count={result.insights.length} countColor="var(--accent)" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {result.insights.map((ins, i) => {
+              const cfg = severityConfig[ins.severity] ?? severityConfig.ok
+              return (
+                <div key={i} style={{
+                  borderLeft: `3px solid ${cfg.borderColor}`,
+                  background: cfg.bg,
+                  borderRadius: '0 12px 12px 0',
+                  padding: '18px 20px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: '0.65rem', fontWeight: 800,
+                      letterSpacing: '0.1em', textTransform: 'uppercase',
+                      color: cfg.color, background: cfg.color.replace('var(--', '').replace(')', '') + '1a',
+                      padding: '2px 8px', borderRadius: '100px',
+                      border: `1px solid ${cfg.borderColor}30`,
+                    }}>
+                      {cfg.label}
+                    </span>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>{ins.title}</span>
+                  </div>
+                  <p style={{ fontSize: '0.8375rem', color: 'var(--muted)', lineHeight: 1.7 }}>{ins.body}</p>
                 </div>
-                <p className="text-sm text-gray-600 leading-relaxed">{ins.body}</p>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Suggested Rewrites</h2>
-        <div className="space-y-4">
-          {result.rewrites?.map((rw, i) => (
-            <div key={i} className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="bg-red-50 px-5 py-4">
-                <p className="text-xs font-bold text-red-500 uppercase tracking-wide mb-1.5">Before</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{stripMarkdown(rw.original)}</p>
-              </div>
-              <div className="bg-green-50 px-5 py-4 flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1.5">After</p>
-                  <p className="text-sm text-gray-700 leading-relaxed">{stripMarkdown(rw.rewritten)}</p>
+      {/* ── Rewrites ── */}
+      {result.rewrites?.length > 0 && (
+        <div>
+          <SectionHeader title="Suggested Rewrites" count={result.rewrites.length} countColor="var(--success)" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {result.rewrites.map((rw, i) => (
+              <div key={i} style={{
+                background: 'var(--surface-2)', border: '1px solid var(--border)',
+                borderRadius: '14px', overflow: 'hidden',
+              }}>
+                {/* Before */}
+                <div style={{
+                  padding: '18px 20px',
+                  borderBottom: '1px solid var(--border)',
+                  background: 'rgba(248,113,113,0.04)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <span style={{
+                      fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em',
+                      textTransform: 'uppercase', color: 'var(--danger)',
+                    }}>Before</span>
+                    <div style={{ flex: 1, height: '1px', background: 'rgba(248,113,113,0.15)' }} />
+                  </div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--muted)', lineHeight: 1.72 }}>
+                    {stripMarkdown(rw.original)}
+                  </p>
                 </div>
-                <CopyButton text={stripMarkdown(rw.rewritten)} />
+                {/* After */}
+                <div style={{
+                  padding: '18px 20px',
+                  background: 'rgba(74,222,128,0.04)',
+                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                      <span style={{
+                        fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em',
+                        textTransform: 'uppercase', color: 'var(--success)',
+                      }}>After</span>
+                      <div style={{ flex: 1, height: '1px', background: 'rgba(74,222,128,0.15)' }} />
+                    </div>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text)', lineHeight: 1.72 }}>
+                      {stripMarkdown(rw.rewritten)}
+                    </p>
+                  </div>
+                  <CopyButton text={stripMarkdown(rw.rewritten)} />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
     </div>
   )
 }

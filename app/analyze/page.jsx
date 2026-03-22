@@ -10,71 +10,10 @@ import AnalysisResults from '@/components/AnalysisResults'
 const JD_MAX = 3000
 const FILE_MAX_BYTES = 5 * 1024 * 1024
 
-/* ─── Helpers ─────────────────────────────────────────────────────────── */
-const stripMarkdown = (text) =>
-  text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
-
+/* ─── Helpers ─── */
 const truncate = (str, n) => (str.length > n ? str.slice(0, n) + '…' : str)
 
-const severityStyle = {
-  fix:  { border: 'border-l-red-500',   bg: 'bg-red-50',   badge: 'bg-red-100 text-red-700'    },
-  warn: { border: 'border-l-amber-500', bg: 'bg-amber-50', badge: 'bg-amber-100 text-amber-700' },
-  ok:   { border: 'border-l-green-500', bg: 'bg-green-50', badge: 'bg-green-100 text-green-700' },
-}
-
-/* ─── ScoreRing ───────────────────────────────────────────────────────── */
-function ScoreRing({ score }) {
-  const radius = 80
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (score / 100) * circumference
-  const color = score >= 70 ? '#22c55e' : score >= 40 ? '#f59e0b' : '#ef4444'
-  const verdict =
-    score >= 85 ? 'Strong' : score >= 70 ? 'Good' : score >= 40 ? 'Needs Work' : 'Poor'
-
-  return (
-    <div className="flex flex-col items-center gap-2 shrink-0">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">ATS Match Score</p>
-      <svg width="200" height="200" viewBox="0 0 200 200">
-        <circle cx="100" cy="100" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="14" />
-        <circle
-          cx="100" cy="100" r={radius}
-          fill="none" stroke={color} strokeWidth="14"
-          strokeDasharray={circumference} strokeDashoffset={offset}
-          strokeLinecap="round" transform="rotate(-90 100 100)"
-        />
-        <text x="100" y="93" textAnchor="middle" fontSize="44" fontWeight="700" fill="#111827">{score}</text>
-        <text x="100" y="117" textAnchor="middle" fontSize="14" fill="#9ca3af">/ 100</text>
-      </svg>
-      <span
-        className="text-sm font-semibold px-4 py-1 rounded-full"
-        style={{ background: color + '22', color }}
-      >
-        {verdict}
-      </span>
-    </div>
-  )
-}
-
-/* ─── CopyButton ──────────────────────────────────────────────────────── */
-function CopyButton({ text }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <button
-      onClick={() => {
-        navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      }}
-      className="shrink-0 text-xs px-3 py-1.5 rounded-md border border-gray-300 bg-white
-                 hover:bg-gray-50 hover:border-gray-400 transition-colors whitespace-nowrap
-                 font-medium text-gray-600"
-    >
-      {copied ? '✓ Copied!' : 'Copy to clipboard'}
-    </button>
-  )
-}
-
-/* ─── PdfUploadZone ───────────────────────────────────────────────────── */
+/* ─── PdfUploadZone ─── */
 function PdfUploadZone({ file, onFile, onClear, fileError }) {
   const inputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
@@ -88,18 +27,32 @@ function PdfUploadZone({ file, onFile, onClear, fileError }) {
 
   if (file) {
     return (
-      <div className="min-h-[300px] flex flex-col items-center justify-center gap-3
-                      border-2 border-green-300 bg-green-50 rounded-xl">
-        <svg className="w-14 h-14 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <circle cx="12" cy="12" r="10" strokeWidth="1.8" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12l3 3 5-5" />
-        </svg>
-        <div className="text-center px-4">
-          <p className="text-sm font-semibold text-green-700">Ready to analyze</p>
-          <p className="text-sm text-gray-600 truncate max-w-[220px] mt-0.5">{file.name}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{(file.size / 1024).toFixed(0)} KB</p>
+      <div style={{
+        minHeight: '300px', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: '12px',
+        border: '2px solid rgba(74,222,128,0.35)',
+        background: 'rgba(74,222,128,0.05)',
+        borderRadius: '14px',
+      }}>
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '50%',
+          background: 'rgba(74,222,128,0.12)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="26" height="26" fill="none" stroke="var(--success)" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" strokeWidth="1.8" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M8 12l3 3 5-5" />
+          </svg>
         </div>
-        <button onClick={onClear} className="text-xs text-red-500 hover:text-red-700 hover:underline transition-colors">
+        <div style={{ textAlign: 'center', padding: '0 16px' }}>
+          <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--success)', marginBottom: '4px' }}>Ready to analyze</p>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text)', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--dim)', marginTop: '2px' }}>{(file.size / 1024).toFixed(0)} KB</p>
+        </div>
+        <button onClick={onClear} style={{
+          fontSize: '0.75rem', color: 'var(--danger)', background: 'none',
+          border: 'none', cursor: 'pointer', padding: '4px 8px',
+        }}>
           Remove file
         </button>
       </div>
@@ -107,39 +60,53 @@ function PdfUploadZone({ file, onFile, onClear, fileError }) {
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <div
+        className="upload-zone"
         onClick={() => inputRef.current.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]) }}
-        className={`min-h-[300px] flex flex-col items-center justify-center gap-2
-          border-2 border-dashed rounded-xl cursor-pointer transition-all select-none
-          ${dragging
-            ? 'border-indigo-500 bg-indigo-50 scale-[1.01]'
-            : 'border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50/40'
-          }`}
+        style={{
+          minHeight: '300px', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: '10px',
+          border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`,
+          background: dragging ? 'rgba(233,185,76,0.05)' : 'var(--surface-2)',
+          borderRadius: '14px', cursor: 'pointer',
+          transition: 'all 0.2s ease',
+          transform: dragging ? 'scale(1.01)' : 'scale(1)',
+        }}
       >
-        <svg className="w-14 h-14 text-indigo-300 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 3v5a1 1 0 001 1h5" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 13h6M9 17h4" />
-        </svg>
-        <p className="text-sm text-gray-600 text-center px-6 leading-relaxed">
+        <div className="scan-line" />
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '12px',
+          background: 'rgba(233,185,76,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          marginBottom: '4px',
+        }}>
+          <svg width="26" height="26" fill="none" stroke="var(--accent)" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6}
+              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M13 3v5a1 1 0 001 1h5" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M9 13h6M9 17h4" />
+          </svg>
+        </div>
+        <p style={{ fontSize: '0.875rem', color: 'var(--muted)', textAlign: 'center', padding: '0 24px', lineHeight: 1.6 }}>
           Drop your resume PDF here, or{' '}
-          <span className="text-indigo-600 font-semibold">click to browse</span>
+          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>click to browse</span>
         </p>
-        <p className="text-xs text-gray-400">PDF only · max 5MB</p>
-        <input ref={inputRef} type="file" accept=".pdf" className="hidden"
+        <p style={{ fontSize: '0.75rem', color: 'var(--dim)' }}>PDF only · max 5 MB</p>
+        <input ref={inputRef} type="file" accept=".pdf" style={{ display: 'none' }}
           onChange={(e) => handleFile(e.target.files[0])} />
       </div>
-      {fileError && <p className="text-xs text-red-500 mt-1">{fileError}</p>}
+      {fileError && (
+        <p style={{ fontSize: '0.75rem', color: 'var(--danger)', marginTop: '2px' }}>{fileError}</p>
+      )}
     </div>
   )
 }
 
-/* ─── AuthModal ───────────────────────────────────────────────────────── */
+/* ─── AuthModal ─── */
 function AuthModal({ onClose, signInWithGoogle, signInWithEmail }) {
   const [magicEmail, setMagicEmail]     = useState('')
   const [magicSent, setMagicSent]       = useState(false)
@@ -154,20 +121,39 @@ function AuthModal({ onClose, signInWithGoogle, signInWithEmail }) {
   }
 
   return (
-    <div className="absolute inset-0 z-50 flex items-start justify-center bg-black/50 pt-24 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm relative">
-        <button onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
-          aria-label="Close">✕</button>
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+      paddingTop: '80px', paddingLeft: '16px', paddingRight: '16px',
+    }}>
+      <div style={{
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: '20px', padding: '36px', width: '100%', maxWidth: '380px',
+        position: 'relative', boxShadow: '0 40px 80px rgba(0,0,0,0.5)',
+      }}>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: '16px', right: '16px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--dim)', fontSize: '1.1rem', lineHeight: 1,
+          padding: '4px', borderRadius: '6px',
+        }}>✕</button>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Sign in to ResumeLens</h2>
-        <p className="text-sm text-gray-500 mb-6">Get 2 free analyses per month</p>
+        <h2 className="font-display" style={{
+          fontSize: '1.375rem', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '6px',
+        }}>Sign in to ResumeLens</h2>
+        <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '28px' }}>
+          Get 2 free analyses per month
+        </p>
 
-        <button onClick={signInWithGoogle}
-          className="w-full flex items-center justify-center gap-3 border border-gray-300
-                     rounded-lg py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50
-                     transition-colors mb-5">
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
+        <button onClick={signInWithGoogle} style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: '10px', background: 'var(--surface-2)', border: '1px solid var(--border)',
+          borderRadius: '10px', padding: '11px', fontSize: '0.875rem', fontWeight: 600,
+          color: 'var(--text)', cursor: 'pointer', marginBottom: '20px',
+          transition: 'border-color 0.2s',
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
@@ -176,28 +162,52 @@ function AuthModal({ onClose, signInWithGoogle, signInWithEmail }) {
           Continue with Google
         </button>
 
-        <div className="flex items-center gap-3 mb-5">
-          <div className="flex-1 border-t border-gray-200" />
-          <span className="text-xs text-gray-400 font-medium">or</span>
-          <div className="flex-1 border-t border-gray-200" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+          <span style={{ fontSize: '0.75rem', color: 'var(--dim)', fontWeight: 600 }}>or</span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
         </div>
 
         {magicSent ? (
-          <div className="text-center py-4">
-            <p className="text-sm font-medium text-gray-700">Check your email for a sign-in link</p>
-            <p className="text-xs text-gray-400 mt-1">{magicEmail}</p>
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <div style={{
+              width: '44px', height: '44px', borderRadius: '50%',
+              background: 'rgba(74,222,128,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
+            }}>
+              <svg width="20" height="20" fill="none" stroke="var(--success)" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '4px' }}>Check your email</p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--dim)' }}>{magicEmail}</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            <input type="email" placeholder="you@example.com"
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <input
+              type="email" placeholder="you@example.com"
               value={magicEmail} onChange={(e) => setMagicEmail(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleMagicLink()}
-              className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm
-                         focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent" />
-            <button onClick={handleMagicLink}
+              style={{
+                width: '100%', border: '1px solid var(--border)',
+                borderRadius: '10px', padding: '11px 14px',
+                fontSize: '0.875rem', outline: 'none',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+            />
+            <button
+              onClick={handleMagicLink}
               disabled={magicLoading || !magicEmail.trim()}
-              className="w-full bg-indigo-600 text-white text-sm font-semibold py-2.5 rounded-lg
-                         hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+              style={{
+                width: '100%', background: 'var(--accent)', color: '#0d0d11',
+                border: 'none', borderRadius: '10px', padding: '11px',
+                fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
+                opacity: magicLoading || !magicEmail.trim() ? 0.45 : 1,
+                transition: 'opacity 0.2s',
+              }}
+            >
               {magicLoading ? 'Sending…' : 'Send magic link'}
             </button>
           </div>
@@ -207,33 +217,64 @@ function AuthModal({ onClose, signInWithGoogle, signInWithEmail }) {
   )
 }
 
-/* ─── PaywallModal ────────────────────────────────────────────────────── */
+/* ─── PaywallModal ─── */
 function PaywallModal({ onClose, onUpgrade, upgradeLoading }) {
   return (
-    <div className="absolute inset-0 z-50 flex items-start justify-center bg-black/50 pt-24 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm relative text-center">
-        <button onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
-          aria-label="Close">✕</button>
-        <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-7 h-7 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+      paddingTop: '80px', paddingLeft: '16px', paddingRight: '16px',
+    }}>
+      <div style={{
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: '20px', padding: '36px', width: '100%', maxWidth: '380px',
+        position: 'relative', textAlign: 'center',
+        boxShadow: '0 40px 80px rgba(0,0,0,0.5)',
+      }}>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: '16px', right: '16px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: 'var(--dim)', fontSize: '1.1rem', lineHeight: 1, padding: '4px',
+        }}>✕</button>
+
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '50%',
+          background: 'rgba(233,185,76,0.12)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
+        }}>
+          <svg width="24" height="24" fill="none" stroke="var(--accent)" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
         </div>
-        <h2 className="text-lg font-bold text-gray-900 mb-2">
-          You&apos;ve used your 2 free analyses this month
+
+        <h2 className="font-display" style={{
+          fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '8px',
+        }}>
+          Monthly limit reached
         </h2>
-        <p className="text-sm text-gray-500 mb-6">Upgrade to Pro for unlimited analyses — ₹499/month</p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '28px', lineHeight: 1.65 }}>
+          You&apos;ve used your 2 free analyses. Upgrade to Pro for unlimited analyses — ₹499/month.
+        </p>
+
         <button
           onClick={onUpgrade}
           disabled={upgradeLoading}
-          className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg
-                     hover:bg-indigo-700 transition-colors text-sm mb-3
-                     disabled:opacity-60 disabled:cursor-not-allowed">
+          style={{
+            width: '100%', background: 'var(--accent)', color: '#0d0d11',
+            border: 'none', borderRadius: '10px', padding: '13px',
+            fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer',
+            marginBottom: '12px',
+            opacity: upgradeLoading ? 0.6 : 1, transition: 'opacity 0.2s',
+          }}
+        >
           {upgradeLoading ? 'Opening payment…' : 'Upgrade to Pro — ₹499/month'}
         </button>
-        <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+        <button onClick={onClose} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: '0.8125rem', color: 'var(--dim)',
+        }}>
           Come back next month
         </button>
       </div>
@@ -241,7 +282,7 @@ function PaywallModal({ onClose, onUpgrade, upgradeLoading }) {
   )
 }
 
-/* ─── Analyze Page ────────────────────────────────────────────────────── */
+/* ─── Analyze Page ─── */
 export default function AnalyzePage() {
   const topRef = useRef(null)
   const { user, session, loading: authLoading, signOut, signInWithGoogle, signInWithEmail } = useAuth()
@@ -268,7 +309,6 @@ export default function AnalyzePage() {
     getUsage(session.access_token).then(setUsage)
   }, [session])
 
-  // Load Razorpay checkout script
   useEffect(() => {
     const script = document.createElement('script')
     script.src = 'https://checkout.razorpay.com/v1/checkout.js'
@@ -296,7 +336,7 @@ export default function AnalyzePage() {
         description: 'Pro Plan — Unlimited Analyses',
         order_id: orderData.order_id,
         prefill: { email: user?.email || '' },
-        theme: { color: '#4f46e5' },
+        theme: { color: '#e9b94c' },
         handler: async (response) => {
           const verifyRes = await fetch('/api/razorpay/verify', {
             method: 'POST',
@@ -321,9 +361,7 @@ export default function AnalyzePage() {
           }
           setUpgradeLoading(false)
         },
-        modal: {
-          ondismiss: () => setUpgradeLoading(false),
-        },
+        modal: { ondismiss: () => setUpgradeLoading(false) },
       }
 
       const rzp = new window.Razorpay(options)
@@ -386,16 +424,27 @@ export default function AnalyzePage() {
   const hasModal   = showAuthModal || showPaywall
 
   return (
-    <div ref={topRef} className="min-h-screen bg-white text-gray-900" style={{ position: 'relative' }}>
+    <div ref={topRef} style={{ minHeight: '100vh', background: 'var(--bg)', position: 'relative' }}>
 
+      {/* Toast banners */}
       {authError && (
-        <div className="fixed top-0 inset-x-0 z-50 bg-red-600 text-white text-sm text-center py-2 px-4">
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60,
+          background: 'rgba(248,113,113,0.15)', borderBottom: '1px solid rgba(248,113,113,0.3)',
+          color: 'var(--danger)', fontSize: '0.8125rem', textAlign: 'center',
+          padding: '10px 16px', backdropFilter: 'blur(8px)',
+        }}>
           Sign-in failed — your session may have expired. Please try again.
         </div>
       )}
       {upgradeSuccess && (
-        <div className="fixed top-0 inset-x-0 z-50 bg-green-600 text-white text-sm text-center py-2 px-4">
-          You&apos;re now on Pro. Unlimited analyses unlocked.
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60,
+          background: 'rgba(74,222,128,0.12)', borderBottom: '1px solid rgba(74,222,128,0.3)',
+          color: 'var(--success)', fontSize: '0.8125rem', textAlign: 'center',
+          padding: '10px 16px', backdropFilter: 'blur(8px)',
+        }}>
+          You&apos;re now on Pro. Unlimited analyses unlocked. ✓
         </div>
       )}
 
@@ -414,113 +463,196 @@ export default function AnalyzePage() {
         />
       )}
 
-      <div className={hasModal ? 'pointer-events-none select-none' : ''}>
+      <div style={{ pointerEvents: hasModal ? 'none' : 'auto', userSelect: hasModal ? 'none' : 'auto' }}>
 
         {/* ── Navbar ── */}
-        <nav className="border-b border-gray-200 bg-white sticky top-0 z-10">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="text-xl font-bold tracking-tight text-indigo-600">
-                ResumeLens
+        <nav style={{
+          position: 'sticky', top: 0, zIndex: 10,
+          background: 'rgba(13,13,17,0.82)', backdropFilter: 'blur(14px)',
+          borderBottom: '1px solid var(--border-s)',
+        }}>
+          <div style={{
+            maxWidth: '1040px', margin: '0 auto',
+            padding: '0 24px', height: '62px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              <Link href="/" className="font-display" style={{
+                fontWeight: 700, fontSize: '1.15rem', letterSpacing: '-0.02em',
+                color: 'var(--text)', textDecoration: 'none',
+              }}>
+                Resume<span style={{ color: 'var(--accent)' }}>Lens</span>
               </Link>
               {user && (
-                <Link href="/history" className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors hidden sm:block">
+                <Link href="/history" style={{
+                  fontSize: '0.875rem', fontWeight: 500,
+                  color: 'var(--muted)', textDecoration: 'none',
+                  display: 'none',
+                }}
+                  className="sm-block"
+                >
                   History
                 </Link>
               )}
             </div>
+
             {authLoading ? null : user ? (
-              <div className="flex items-center gap-3">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {usage && (
                   usage.plan === 'pro' ? (
-                    <span className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full hidden sm:inline">
-                      Pro — unlimited
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em',
+                      color: 'var(--success)', background: 'rgba(74,222,128,0.1)',
+                      border: '1px solid rgba(74,222,128,0.25)',
+                      padding: '4px 10px', borderRadius: '100px',
+                    }}>
+                      Pro · unlimited
                     </span>
                   ) : (
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border hidden sm:inline ${
-                      usage.analyses_used === 0 ? 'text-gray-500 bg-gray-50 border-gray-200' :
-                      usage.analyses_used === 1 ? 'text-amber-600 bg-amber-50 border-amber-200' :
-                      'text-red-600 bg-red-50 border-red-200'
-                    }`}>
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 700,
+                      padding: '4px 10px', borderRadius: '100px',
+                      border: '1px solid',
+                      ...(usage.analyses_used === 0
+                        ? { color: 'var(--muted)', background: 'var(--surface-2)', borderColor: 'var(--border)' }
+                        : usage.analyses_used === 1
+                        ? { color: 'var(--warn)', background: 'rgba(251,146,60,0.1)', borderColor: 'rgba(251,146,60,0.25)' }
+                        : { color: 'var(--danger)', background: 'rgba(248,113,113,0.1)', borderColor: 'rgba(248,113,113,0.25)' }),
+                    }}>
                       {usage.analyses_used} / 2 analyses
                     </span>
                   )
                 )}
-                <span className="text-sm text-gray-500 hidden sm:block">{truncate(user.email, 20)}</span>
-                <button onClick={signOut}
-                  className="text-sm font-medium text-gray-600 border border-gray-300 px-4 py-1.5
-                             rounded-lg hover:border-red-300 hover:text-red-600 transition-colors">
+                <span style={{ fontSize: '0.8125rem', color: 'var(--dim)' }}>{truncate(user.email, 22)}</span>
+                <button onClick={signOut} style={{
+                  fontSize: '0.8125rem', fontWeight: 600,
+                  color: 'var(--muted)', background: 'none',
+                  border: '1px solid var(--border)',
+                  padding: '6px 14px', borderRadius: '8px', cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                  onMouseEnter={(e) => { e.target.style.color = 'var(--danger)'; e.target.style.borderColor = 'rgba(248,113,113,0.4)' }}
+                  onMouseLeave={(e) => { e.target.style.color = 'var(--muted)'; e.target.style.borderColor = 'var(--border)' }}
+                >
                   Sign out
                 </button>
               </div>
             ) : (
-              <button onClick={() => setShowAuthModal(true)}
-                className="text-sm font-medium text-gray-600 border border-gray-300 px-4 py-1.5
-                           rounded-lg hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+              <button onClick={() => setShowAuthModal(true)} style={{
+                fontSize: '0.875rem', fontWeight: 600,
+                color: 'var(--text)', background: 'var(--surface-2)',
+                border: '1px solid var(--border)',
+                padding: '7px 18px', borderRadius: '8px', cursor: 'pointer',
+              }}>
                 Sign in
               </button>
             )}
           </div>
         </nav>
 
-        <main className="max-w-5xl mx-auto px-4 sm:px-6 py-12">
+        <main style={{ maxWidth: '1040px', margin: '0 auto', padding: '48px 24px 80px' }}>
 
           {/* Hero */}
-          <div className="text-center mb-10">
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900 mb-3">
-              Get hired faster. Know exactly what&apos;s missing.
+          <div className="anim-fade-up" style={{ marginBottom: '44px' }}>
+            <p style={{
+              fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.14em',
+              textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '12px',
+            }}>
+              ATS Analyzer
+            </p>
+            <h1 className="font-display" style={{
+              fontSize: 'clamp(1.75rem, 4vw, 2.75rem)', fontWeight: 700,
+              letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: '12px',
+            }}>
+              Know exactly what&apos;s missing.
             </h1>
-            <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto">
+            <p style={{ fontSize: '0.9375rem', color: 'var(--muted)', maxWidth: '520px', lineHeight: 1.7 }}>
               Upload your resume PDF and paste a job description. Get your ATS score,
               missing keywords, and AI-rewritten bullet points in seconds.
             </p>
           </div>
 
-          {/* Upload + JD */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-gray-700">Your Resume</label>
+          {/* Upload + JD Grid */}
+          <div className="anim-fade-up d-100" style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '20px', marginBottom: '20px',
+          }}>
+            {/* PDF Upload */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Resume PDF
+              </label>
               <PdfUploadZone file={resumeFile} onFile={handleFile} onClear={handleClear} fileError={fileError} />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-semibold text-gray-700">Job Description</label>
+
+            {/* Job Description */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Job Description
+              </label>
               <textarea
-                className="w-full min-h-[300px] border border-gray-300 rounded-xl p-3.5 text-sm
-                           resize-y focus:outline-none focus:ring-2 focus:ring-indigo-400
-                           focus:border-transparent transition-shadow"
-                placeholder="Paste the job description here..."
+                style={{
+                  width: '100%', minHeight: '300px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '14px', padding: '16px',
+                  fontSize: '0.875rem', lineHeight: 1.7,
+                  resize: 'vertical', outline: 'none',
+                  transition: 'border-color 0.2s',
+                  fontFamily: 'var(--font-body, system-ui)',
+                }}
+                placeholder="Paste the job description here…"
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
                 maxLength={JD_MAX}
+                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
               />
-              <span className="text-xs text-gray-400 text-right">{jobDescription.length} / {JD_MAX}</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--dim)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                {jobDescription.length} / {JD_MAX}
+              </span>
             </div>
           </div>
 
           {/* Analyze Button */}
-          <div className="flex flex-col items-center gap-2 mb-8">
+          <div className="anim-fade-up d-200" style={{ marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
             <button
               onClick={handleAnalyze}
               disabled={!canAnalyze}
               title={atLimit ? "You've used both free analyses this month. Upgrade to continue." : undefined}
-              className="px-10 py-3 bg-indigo-600 text-white font-semibold rounded-lg
-                         hover:bg-indigo-700 active:bg-indigo-800
-                         disabled:opacity-40 disabled:cursor-not-allowed
-                         transition-colors text-base shadow-sm">
+              style={{
+                width: '100%', maxWidth: '420px',
+                background: canAnalyze ? 'var(--accent)' : 'var(--surface-3)',
+                color: canAnalyze ? '#0d0d11' : 'var(--dim)',
+                border: 'none', borderRadius: '12px',
+                padding: '15px 24px', fontSize: '0.9375rem', fontWeight: 700,
+                cursor: canAnalyze ? 'pointer' : 'not-allowed',
+                letterSpacing: '-0.01em',
+                transition: 'all 0.2s',
+                boxShadow: canAnalyze ? '0 0 28px rgba(233,185,76,0.25)' : 'none',
+              }}
+            >
               {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3"
-                            strokeDasharray="31.4" strokeDashoffset="10" strokeLinecap="round" />
-                  </svg>
-                  Analyzing…
+                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+                  <span style={{
+                    width: '17px', height: '17px', borderRadius: '50%',
+                    border: '2px solid rgba(13,13,17,0.25)',
+                    borderTopColor: '#0d0d11',
+                    display: 'inline-block',
+                    animation: 'spin 0.8s linear infinite',
+                  }} />
+                  Analyzing your resume…
                 </span>
               ) : 'Analyze My Resume'}
             </button>
+
             {atLimit && (
-              <p className="text-xs text-red-500 font-medium">
+              <p style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>
                 Monthly limit reached.{' '}
-                <button onClick={() => setShowPaywall(true)} className="underline hover:no-underline">
+                <button onClick={() => setShowPaywall(true)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--accent)', fontWeight: 600, textDecoration: 'underline',
+                  fontSize: '0.8rem',
+                }}>
                   Upgrade for unlimited
                 </button>
               </p>
@@ -529,24 +661,42 @@ export default function AnalyzePage() {
 
           {/* Error */}
           {error && (
-            <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div style={{
+              marginBottom: '28px', padding: '16px 18px',
+              background: 'rgba(248,113,113,0.08)',
+              border: '1px solid rgba(248,113,113,0.25)',
+              borderRadius: '12px', color: 'var(--danger)',
+              fontSize: '0.875rem', lineHeight: 1.6,
+            }}>
               {error}
             </div>
           )}
 
           {/* Results */}
           {result && (
-            <div>
+            <div className="anim-fade-in">
+              <div style={{
+                height: '1px',
+                background: 'linear-gradient(90deg, transparent, var(--border), transparent)',
+                marginBottom: '44px',
+              }} />
               <AnalysisResults result={result} />
-              <div className="flex justify-center pt-6 mt-10 border-t border-gray-100">
-                <button onClick={handleReset}
-                  className="px-6 py-2.5 border border-indigo-500 text-indigo-600 font-semibold
-                             rounded-lg hover:bg-indigo-50 transition-colors text-sm">
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '36px', marginTop: '44px', borderTop: '1px solid var(--border-s)' }}>
+                <button onClick={handleReset} style={{
+                  background: 'none', border: '1px solid var(--border)',
+                  color: 'var(--accent)', fontWeight: 600, fontSize: '0.875rem',
+                  padding: '10px 24px', borderRadius: '10px', cursor: 'pointer',
+                  transition: 'all 0.2s', letterSpacing: '-0.01em',
+                }}
+                  onMouseEnter={(e) => { e.target.style.background = 'rgba(233,185,76,0.08)'; e.target.style.borderColor = 'rgba(233,185,76,0.4)' }}
+                  onMouseLeave={(e) => { e.target.style.background = 'none'; e.target.style.borderColor = 'var(--border)' }}
+                >
                   ↑ Analyze Another Resume
                 </button>
               </div>
             </div>
           )}
+
         </main>
       </div>
     </div>
