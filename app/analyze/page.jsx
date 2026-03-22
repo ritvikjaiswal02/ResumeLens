@@ -366,8 +366,22 @@ export default function AnalyzePage() {
   const [coverLetterError, setCoverLetterError]   = useState('')
   const [coverLetterCopied, setCoverLetterCopied] = useState(false)
 
+  const [previousResult, setPreviousResult]       = useState(null)
+  const [comparisonSummary, setComparisonSummary] = useState(null)
+  const [reanalyzing, setReanalyzing]             = useState(false)
+  const [showReanalyzePanel, setShowReanalyzePanel] = useState(false)
+  const [reanalyzeFile, setReanalyzeFile]         = useState(null)
+  const [reanalyzeJd, setReanalyzeJd]             = useState('')
+  const [reanalyzeJdFocused, setReanalyzeJdFocused] = useState(false)
+
   useEffect(() => {
     setAuthError(new URLSearchParams(window.location.search).get('auth_error') === 'true')
+    // Prefill JD if navigated from history "Re-analyze this role"
+    const prefill = sessionStorage.getItem('rl_prefill_jd')
+    if (prefill) {
+      setJobDescription(prefill)
+      sessionStorage.removeItem('rl_prefill_jd')
+    }
   }, [])
 
   useEffect(() => {
@@ -494,10 +508,74 @@ export default function AnalyzePage() {
     setTimeout(() => setCoverLetterCopied(false), 2000)
   }
 
+  const handleReanalyze = async () => {
+    if (!user) { setShowAuthModal(true); return }
+    const fileToUse = reanalyzeFile   // pre-populated when panel opens; null means user cleared it
+    const jdToUse   = reanalyzeJd.trim() || jobDescription
+    if (!fileToUse || !jdToUse) return
+
+    // Save current result before overwriting
+    const prev = result
+    setPreviousResult(prev)
+    setComparisonSummary(null)
+    setReanalyzing(true)
+    setShowReanalyzePanel(false)
+    setCoverLetter(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('resume', fileToUse)
+      formData.append('jobDescription', jdToUse)
+      const res  = await fetch('/api/analyze', {
+        method: 'POST', body: formData,
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const data = await res.json()
+      if (res.status === 403) {
+        setShowPaywall(true)
+        setPreviousResult(null)
+        getUsage(session.access_token).then(setUsage)
+      } else if (!res.ok) {
+        setPreviousResult(null)
+      } else {
+        // Update state with new result
+        setResult(data)
+        if (reanalyzeFile) setResumeFile(reanalyzeFile)
+        if (reanalyzeJd.trim()) setJobDescription(reanalyzeJd)
+        setReanalyzeFile(null)
+        setReanalyzeJd('')
+        getUsage(session.access_token).then(setUsage)
+
+        // Fetch improvement summary (non-blocking)
+        const prevMatched = prev?.keywords?.matched ?? []
+        const newMatched  = data?.keywords?.matched ?? []
+        const addedKeywords = newMatched.filter(k => !prevMatched.includes(k))
+        fetch('/api/improve-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({
+            previousScore: prev.score,
+            newScore: data.score,
+            previousMissing: prev?.keywords?.missing ?? [],
+            newMissing: data?.keywords?.missing ?? [],
+            addedKeywords,
+          }),
+        }).then(r => r.json()).then(d => { if (d.summary) setComparisonSummary(d.summary) })
+      }
+    } catch {
+      setPreviousResult(null)
+    } finally {
+      setReanalyzing(false)
+    }
+  }
+
   const handleReset = () => {
     setResumeFile(null); setFileError('')
     setJobDescription(''); setResult(null); setError('')
     setCoverLetter(null); setCoverLetterError('')
+    setPreviousResult(null); setComparisonSummary(null)
+    setReanalyzing(false); setShowReanalyzePanel(false)
+    setReanalyzeFile(null); setReanalyzeJd('')
     topRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
@@ -533,7 +611,7 @@ export default function AnalyzePage() {
       )}
 
       {/* ── Navbar ── */}
-      <nav className="sticky top-0 z-10"
+      <nav className="no-print sticky top-0 z-10"
         style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -719,7 +797,7 @@ export default function AnalyzePage() {
             <StepIndicator resumeFile={resumeFile} jobDescription={jobDescription} result={result} />
 
             {/* Summary bar */}
-            <div className="flex items-center justify-between gap-4 mb-8 pb-5"
+            <div className="no-print flex items-center justify-between gap-4 mb-8 pb-5"
               style={{ borderBottom: '1px solid var(--border)' }}>
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -744,7 +822,12 @@ export default function AnalyzePage() {
               </Button>
             </div>
 
-            <AnalysisResults result={result} />
+            <AnalysisResults
+              result={result}
+              previousResult={previousResult}
+              comparisonSummary={comparisonSummary}
+              reanalyzing={reanalyzing}
+            />
 
             {/* ── Cover Letter ── */}
             <div className="mt-12">
@@ -846,6 +929,126 @@ export default function AnalyzePage() {
                       style={{ color: 'var(--foreground)', fontFamily: 'inherit' }}>
                       {coverLetter}
                     </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Re-analyze Panel ── */}
+            <div className="mt-12 no-print">
+              {/* Toggle header */}
+              <button
+                onClick={() => {
+                  const opening = !showReanalyzePanel
+                  setShowReanalyzePanel(opening)
+                  if (opening) {
+                    if (!reanalyzeJd) setReanalyzeJd(jobDescription)
+                    if (!reanalyzeFile) setReanalyzeFile(resumeFile)  // pre-populate with current file
+                  }
+                }}
+                className="w-full flex items-center justify-between px-5 py-4 rounded-xl transition-all group"
+                style={{
+                  background: showReanalyzePanel ? 'rgba(233,185,76,0.06)' : 'var(--surface-2)',
+                  border: `1.5px solid ${showReanalyzePanel ? 'rgba(233,185,76,0.28)' : 'rgba(255,255,255,0.07)'}`,
+                }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{ background: showReanalyzePanel ? 'rgba(233,185,76,0.15)' : 'var(--surface-3)' }}>
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <path d="M2 6.5a4.5 4.5 0 0 1 7.94-2.94M11 6.5a4.5 4.5 0 0 1-7.94 2.94"
+                        stroke={showReanalyzePanel ? 'var(--gold)' : 'var(--dim)'}
+                        strokeWidth="1.6" strokeLinecap="round"/>
+                      <path d="M9.5 3l.44 1.56L11.5 4" stroke={showReanalyzePanel ? 'var(--gold)' : 'var(--dim)'}
+                        strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold" style={{ color: showReanalyzePanel ? 'var(--gold)' : 'var(--foreground)' }}>
+                      Test Your Updates
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                      Upload an improved resume and re-run the analysis to see your progress
+                    </p>
+                  </div>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+                  className="shrink-0 transition-transform duration-200"
+                  style={{ transform: showReanalyzePanel ? 'rotate(180deg)' : 'none', color: 'var(--dim)' }}>
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+
+              {/* Expanded panel */}
+              {showReanalyzePanel && (
+                <div className="mt-3 rounded-xl overflow-hidden anim-fade-up"
+                  style={{ border: '1.5px solid rgba(233,185,76,0.2)', background: 'var(--surface)' }}>
+                  <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                    {/* Left — new PDF upload */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs font-bold uppercase tracking-widest"
+                        style={{ color: 'var(--muted-foreground)' }}>
+                        Updated Resume
+                      </label>
+                      <PdfUploadZone
+                        file={reanalyzeFile}
+                        onFile={(f, err) => { if (!err) setReanalyzeFile(f) }}
+                        onClear={() => setReanalyzeFile(null)}
+                      />
+                      {reanalyzeFile && reanalyzeFile !== resumeFile && (
+                        <p className="text-xs" style={{ color: 'var(--success)' }}>
+                          ✦ New file selected — will replace previous
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Right — editable JD */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-widest"
+                          style={{ color: 'var(--muted-foreground)' }}>
+                          Job Description
+                        </label>
+                        <button
+                          onClick={() => setReanalyzeJd(jobDescription)}
+                          className="text-[0.68rem] font-semibold"
+                          style={{ color: 'var(--dim)' }}>
+                          Reset
+                        </button>
+                      </div>
+                      <textarea
+                        className="resize-none rounded-xl px-4 py-3.5 text-sm leading-relaxed outline-none transition-all"
+                        style={{
+                          height: INPUT_HEIGHT,
+                          background: 'var(--surface-2)',
+                          border: `1.5px solid ${reanalyzeJdFocused ? 'var(--gold)' : 'rgba(255,255,255,0.09)'}`,
+                          boxShadow: reanalyzeJdFocused ? '0 0 0 3px rgba(233,185,76,0.14)' : 'none',
+                          color: 'var(--foreground)',
+                          fontFamily: 'inherit',
+                        }}
+                        value={reanalyzeJd}
+                        onChange={(e) => setReanalyzeJd(e.target.value)}
+                        onFocus={() => setReanalyzeJdFocused(true)}
+                        onBlur={() => setReanalyzeJdFocused(false)}
+                        maxLength={JD_MAX}
+                        placeholder="Edit the job description if needed…"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Re-analyze CTA */}
+                  <div className="px-5 pb-5 flex items-center justify-center">
+                    <button
+                      onClick={handleReanalyze}
+                      disabled={reanalyzing || !reanalyzeFile}
+                      className="h-12 px-10 font-bold rounded-xl transition-all text-[0.9375rem] disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={{
+                        background: 'var(--gold)', color: 'var(--background)',
+                        boxShadow: '0 0 20px rgba(233,185,76,0.22)',
+                        minWidth: '220px',
+                      }}>
+                      {reanalyzing ? 'Re-analyzing…' : 'Re-analyze →'}
+                    </button>
                   </div>
                 </div>
               )}

@@ -99,8 +99,11 @@ export async function POST(request) {
     const arrayBuffer = await resumeFile.arrayBuffer()
     const pdfBase64 = Buffer.from(arrayBuffer).toString('base64')
 
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+
     const prompt =
       `You are a professional resume analyst and ATS expert. ` +
+      `Today's date is ${today}. Use this to correctly evaluate whether resume dates are past, current, or future. ` +
       `A PDF resume is attached. Read all text visible in it carefully, ` +
       `including any text rendered as vectors or paths. ` +
       `Return ONLY valid JSON, no markdown, no backticks, no explanation.\n\n` +
@@ -117,15 +120,48 @@ export async function POST(request) {
       `  ],\n` +
       `  "rewrites": [\n` +
       `    { "original": <exact bullet>, "rewritten": <improved bullet> }\n` +
+      `  ],\n` +
+      `  "ats_summary": <one sentence: overall ATS compatibility verdict, e.g. "Your resume is well-structured but missing a summary section and has inconsistent date formatting.">,\n` +
+      `  "ats_structure": [\n` +
+      `    { "type": <"error"|"warning"|"good">, "title": <string>, "description": <string> }\n` +
       `  ]\n` +
       `}\n` +
       `Rules:\n` +
-      `- score = (matched keywords / total JD keywords) * 100, rounded\n` +
+      `- SCORING — use a weighted holistic model, not a keyword count ratio:\n` +
+      `    Keyword coverage  40 pts  (matched important JD keywords / total important JD keywords)\n` +
+      `    Experience depth  30 pts  (does the candidate's experience match the role level, responsibilities, and domain?)\n` +
+      `    Skills alignment  20 pts  (do listed technologies and tools satisfy the core requirements?)\n` +
+      `    Resume quality    10 pts  (quantified bullets, clear structure, no red flags)\n` +
+      `  Add all four components. Round to nearest integer. Be calibrated:\n` +
+      `  - A resume that matches most keywords AND has relevant experience should score 70–90.\n` +
+      `  - A resume that matches most keywords but lacks depth should score 50–70.\n` +
+      `  - A resume that is largely irrelevant to the JD should score below 40.\n` +
+      `  - Never inflate or deflate artificially. A strong junior resume for a junior role can score 80+.\n` +
+      `  - Missing 2–3 minor keywords should NOT drag an otherwise strong resume below 60.\n` +
+      `- verdict thresholds: score >= 75 → "strong", score >= 55 → "good", score >= 35 → "needs_work", else → "poor"\n` +
       `- provide 4-6 insights ordered by severity (fix first)\n` +
       `- provide 2-3 rewrites for the weakest resume bullets\n` +
       `- never invent facts, use [X] for unknown metrics\n` +
       `- matched/missing arrays: 5-15 items each\n` +
-      `- plain text only in all fields, no markdown asterisks or bold\n\n` +
+      `- keywords must be SHORT (1-4 words max): skills, tools, technologies, or brief role terms — NEVER full sentences or job responsibilities\n` +
+      `- plain text only in all fields, no markdown asterisks or bold\n` +
+      `- ats_summary: one specific sentence — overall ATS verdict. Mention the 1-2 most important issues by name. Not generic.\n` +
+      `- ats_structure: STRICT evaluation. Only flag things that ACTUALLY break ATS parsing or cause rejections.\n` +
+      `  HIGH-IMPACT issues worth flagging (error/warning):\n` +
+      `    * Entire critical section missing: no Skills section, no Experience section, no Education section\n` +
+      `    * Contact info absent or buried (no email, no phone at top)\n` +
+      `    * Experience written as paragraphs with no bullets (ATS cannot parse responsibilities)\n` +
+      `    * Dates completely absent from jobs/education\n` +
+      `    * Section headers are non-standard (e.g. "My Journey" instead of "Experience")\n` +
+      `  DO NOT FLAG (these are nitpicks that do not affect ATS parsing):\n` +
+      `    * GPA format or placement — irrelevant to ATS\n` +
+      `    * Minor date inconsistencies (having a year-only entry is fine)\n` +
+      `    * Missing summary/objective — optional, not an ATS requirement\n` +
+      `    * Slight formatting preferences\n` +
+      `    * Things that are present but "could be better"\n` +
+      `  For GOOD items: only highlight genuine strengths (has skills section, has bullets, contact info present)\n` +
+      `  Provide 3-5 items MAXIMUM. Quality over quantity. If the resume is structurally solid, say so — do not invent warnings.\n` +
+      `  Each description: state what is wrong/good, why it matters to ATS, and exactly what to fix (if applicable).\n\n` +
       `JOB DESCRIPTION:\n${jobDescription.toString().slice(0, 3000)}`
 
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
@@ -166,11 +202,17 @@ export async function POST(request) {
     }
 
     // ── Save to history (non-blocking) ────────────────────────────────
+    // Extract job title: first non-empty line of the JD, max 80 chars
+    const jdText = jobDescription.toString()
+    const jobTitle = jdText.split('\n').map(l => l.trim()).find(l => l.length > 2)?.slice(0, 80) || 'Resume Analysis'
+
     try {
       await supabase.from('analyses').insert({
         user_id: user.id,
         resume_name: resumeFile.name || 'resume.pdf',
         jd_snippet: jobDescription.toString().slice(0, 120),
+        jd_text: jobDescription.toString().slice(0, 3000),
+        job_title: jobTitle,
         score: result.score,
         verdict: result.verdict,
         result,

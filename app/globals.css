@@ -133,6 +133,49 @@ body::after {
   pointer-events: none;
 }
 
+/* ── Print styles ── */
+.no-print  { }
+.print-only { display: none; }
+
+@media print {
+  /* Swap dark theme to paper-friendly light */
+  :root {
+    --background:      #ffffff;
+    --foreground:      #111111;
+    --card:            #ffffff;
+    --card-foreground: #111111;
+    --muted:           #f5f5f5;
+    --muted-foreground:#555555;
+    --border:          #d8d8d8;
+    --surface-3:       #eeeeee;
+    --success:         #16a34a;
+    --danger:          #dc2626;
+    --warn:            #d97706;
+    --gold:            #b45309;
+  }
+
+  /* Hide UI chrome */
+  .no-print, body::after { display: none !important; }
+
+  /* Show print-only elements */
+  .print-only { display: block !important; }
+
+  body { background: white !important; color: #111 !important; }
+
+  /* Freeze all motion */
+  * {
+    animation: none !important;
+    transition: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Keep rewrite cards together */
+  .rewrite-card { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Page setup */
+  @page { margin: 0.85in; size: A4 portrait; }
+}
+
 /* ── Shadcn component tweaks ── */
 /* Make shadcn Textarea/Input use our dark surface */
 .dark-input {
