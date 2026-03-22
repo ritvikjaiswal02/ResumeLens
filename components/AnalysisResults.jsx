@@ -1,113 +1,75 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-/* ─── Helpers ─── */
-const stripMarkdown = (text) =>
-  text.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
+const stripMarkdown = (t) =>
+  t.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1')
 
-const severityConfig = {
-  fix:  { color: 'var(--danger)',  bg: 'rgba(248,113,113,0.06)',  borderColor: '#f87171',  label: 'Fix'     },
-  warn: { color: 'var(--warn)',    bg: 'rgba(251,146,60,0.06)',   borderColor: '#fb923c',  label: 'Warning' },
-  ok:   { color: 'var(--success)', bg: 'rgba(74,222,128,0.06)',   borderColor: '#4ade80',  label: 'Good'    },
+const SEV = {
+  fix:  { color: 'var(--danger)',  raw: '#f87171', bg: 'rgba(248,113,113,0.06)', label: 'Fix'     },
+  warn: { color: 'var(--warn)',    raw: '#fb923c', bg: 'rgba(251,146,60,0.06)',  label: 'Warning' },
+  ok:   { color: 'var(--success)', raw: '#4ade80', bg: 'rgba(74,222,128,0.06)', label: 'Good'    },
 }
 
-/* ─── ScoreRing ─── */
+/* ─── Compact Score Ring (for dashboard header) ─── */
 function ScoreRing({ score }) {
   const [drawn, setDrawn] = useState(false)
+  useEffect(() => { const t = setTimeout(() => setDrawn(true), 120); return () => clearTimeout(t) }, [])
 
-  useEffect(() => {
-    const t = setTimeout(() => setDrawn(true), 120)
-    return () => clearTimeout(t)
-  }, [])
-
-  const radius       = 76
-  const circumference = 2 * Math.PI * radius
-  const targetOffset  = circumference - (score / 100) * circumference
-  const currentOffset = drawn ? targetOffset : circumference
-
-  const color = score >= 85
-    ? 'var(--accent)'
-    : score >= 70
-    ? 'var(--success)'
-    : score >= 40
-    ? 'var(--warn)'
-    : 'var(--danger)'
-
-  const rawColor = score >= 85 ? '#e9b94c'
-    : score >= 70 ? '#4ade80'
-    : score >= 40 ? '#fb923c'
-    : '#f87171'
-
-  const verdict = score >= 85 ? 'Strong Match'
-    : score >= 70 ? 'Good Match'
-    : score >= 40 ? 'Needs Work'
-    : 'Poor Match'
+  const r     = 52
+  const circ  = 2 * Math.PI * r
+  const offset = drawn ? circ - (score / 100) * circ : circ
+  const raw   = score >= 85 ? '#e9b94c' : score >= 70 ? '#4ade80' : score >= 40 ? '#fb923c' : '#f87171'
+  const verdict = score >= 85 ? 'Strong Match' : score >= 70 ? 'Good Match' : score >= 40 ? 'Needs Work' : 'Poor Match'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
-      <p style={{
-        fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em',
-        textTransform: 'uppercase', color: 'var(--dim)',
-      }}>
-        ATS Match Score
-      </p>
-
-      <div style={{ position: 'relative' }}>
-        {/* Ambient glow behind ring */}
-        <div style={{
-          position: 'absolute', inset: '-12px', borderRadius: '50%',
-          background: `radial-gradient(circle, ${rawColor}28 0%, transparent 70%)`,
-          pointerEvents: 'none',
-          transition: 'opacity 0.8s ease',
-          opacity: drawn ? 1 : 0,
-          animation: drawn ? 'glowPulse 2.4s ease-in-out infinite' : 'none',
-        }} />
-
-        <svg width="196" height="196" viewBox="0 0 196 196">
-          {/* Track */}
-          <circle cx="98" cy="98" r={radius} fill="none" stroke="var(--surface-3)" strokeWidth="11" />
-          {/* Tick marks */}
-          {[0, 25, 50, 75].map((pct) => {
-            const angle = (pct / 100) * 360 - 90
-            const rad   = angle * (Math.PI / 180)
-            const x1 = 98 + (radius - 7) * Math.cos(rad)
-            const y1 = 98 + (radius - 7) * Math.sin(rad)
-            const x2 = 98 + (radius + 7) * Math.cos(rad)
-            const y2 = 98 + (radius + 7) * Math.sin(rad)
-            return <line key={pct} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--border)" strokeWidth="1.5" />
-          })}
-          {/* Progress arc */}
-          <circle
-            cx="98" cy="98" r={radius}
-            fill="none" stroke={rawColor} strokeWidth="11"
-            strokeDasharray={circumference}
-            strokeDashoffset={currentOffset}
-            strokeLinecap="round"
-            transform="rotate(-90 98 98)"
-            style={{ transition: 'stroke-dashoffset 1.3s cubic-bezier(0.34, 1.4, 0.64, 1)' }}
-          />
-          {/* Score number */}
-          <text x="98" y="88" textAnchor="middle" fontSize="50" fontWeight="700"
-            fill="var(--text)" fontFamily="var(--font-display, Georgia), serif"
-            style={{ transition: 'opacity 0.5s ease', opacity: drawn ? 1 : 0 }}>
+    <div className="flex items-center gap-5">
+      {/* Ring */}
+      <div className="relative shrink-0">
+        <div className="absolute inset-[-10px] rounded-full pointer-events-none"
+          style={{
+            background: `radial-gradient(circle, ${raw}22 0%, transparent 70%)`,
+            opacity: drawn ? 1 : 0, transition: 'opacity 0.6s ease',
+            animation: drawn ? 'glowPulse 2.4s ease-in-out infinite' : 'none',
+          }} />
+        <svg width="136" height="136" viewBox="0 0 136 136">
+          <circle cx="68" cy="68" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="8" />
+          <circle cx="68" cy="68" r={r}
+            fill="none" stroke={raw} strokeWidth="8"
+            strokeDasharray={circ} strokeDashoffset={offset}
+            strokeLinecap="round" transform="rotate(-90 68 68)"
+            style={{ transition: 'stroke-dashoffset 1.3s cubic-bezier(0.34, 1.4, 0.64, 1)' }} />
+          <text x="68" y="62" textAnchor="middle" fontSize="34" fontWeight="700"
+            fill="var(--foreground)" fontFamily="var(--font-display, Georgia), serif"
+            style={{ opacity: drawn ? 1 : 0, transition: 'opacity 0.4s ease 0.3s' }}>
             {score}
           </text>
-          <text x="98" y="112" textAnchor="middle" fontSize="12" fill="var(--dim)">
-            out of 100
+          <text x="68" y="80" textAnchor="middle" fontSize="10" fill="var(--muted-foreground)">
+            / 100
           </text>
         </svg>
       </div>
-
-      <span style={{
-        fontSize: '0.8125rem', fontWeight: 700,
-        padding: '5px 16px', borderRadius: '100px',
-        background: rawColor + '1a', color,
-        letterSpacing: '-0.01em',
-        border: `1px solid ${rawColor}33`,
-      }}>
-        {verdict}
-      </span>
+      {/* Score label */}
+      <div className="flex flex-col gap-1.5">
+        <p className="text-[0.68rem] font-bold tracking-[0.12em] uppercase text-muted-foreground/60">
+          ATS Match Score
+        </p>
+        <Badge variant="outline" className="font-bold rounded-full w-fit text-sm px-3 py-0.5"
+          style={{ color: raw, background: raw + '18', borderColor: raw + '35' }}>
+          {verdict}
+        </Badge>
+        <p className="text-xs text-muted-foreground/60">
+          {score >= 85 ? 'Excellent keyword alignment'
+            : score >= 70 ? 'Good alignment, a few gaps'
+            : score >= 40 ? 'Several keywords missing'
+            : 'Major keyword gaps found'}
+        </p>
+      </div>
     </div>
   )
 }
@@ -116,46 +78,35 @@ function ScoreRing({ score }) {
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false)
   return (
-    <button
-      onClick={() => {
-        navigator.clipboard.writeText(text)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      }}
-      style={{
-        flexShrink: 0, fontSize: '0.75rem', fontWeight: 600,
-        padding: '6px 14px', borderRadius: '8px',
-        border: `1px solid ${copied ? 'rgba(74,222,128,0.35)' : 'var(--border)'}`,
-        background: copied ? 'rgba(74,222,128,0.1)' : 'var(--surface-3)',
-        color: copied ? 'var(--success)' : 'var(--muted)',
-        cursor: 'pointer', whiteSpace: 'nowrap',
-        transition: 'all 0.2s',
-      }}
-    >
+    <Button variant="outline" size="sm"
+      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+      className="shrink-0 h-8 text-xs font-semibold border-border transition-all"
+      style={copied ? { borderColor: 'rgba(74,222,128,0.4)', color: 'var(--success)', background: 'rgba(74,222,128,0.08)' } : {}}>
       {copied ? '✓ Copied' : 'Copy'}
-    </button>
+    </Button>
   )
 }
 
-/* ─── SectionHeader ─── */
-function SectionHeader({ title, count, countColor }) {
+/* ─── Section header ─── */
+function SectionTitle({ children, count, countColor, sub }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
-      <h2 className="font-display" style={{
-        fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.02em',
-      }}>
-        {title}
-      </h2>
-      {count != null && (
-        <span style={{
-          fontSize: '0.72rem', fontWeight: 700,
-          padding: '2px 9px', borderRadius: '100px',
-          background: countColor + '18', color: countColor,
-          border: `1px solid ${countColor}30`,
-        }}>
-          {count}
-        </span>
-      )}
+    <div className="flex items-start justify-between mb-5 gap-4">
+      <div className="flex items-center gap-3">
+        {/* Amber accent bar */}
+        <div className="w-1 h-6 rounded-full shrink-0" style={{ background: countColor ?? 'var(--gold)' }} />
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h2 className="font-display text-lg font-bold tracking-tight">{children}</h2>
+            {count != null && (
+              <Badge variant="outline" className="text-[0.7rem] font-bold rounded-full"
+                style={{ color: countColor, background: countColor + '18', borderColor: countColor + '30' }}>
+                {count}
+              </Badge>
+            )}
+          </div>
+          {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+        </div>
+      </div>
     </div>
   )
 }
@@ -164,174 +115,157 @@ function SectionHeader({ title, count, countColor }) {
 export default function AnalysisResults({ result }) {
   if (!result) return null
 
+  const matched = result.keywords?.matched ?? []
+  const missing = result.keywords?.missing ?? []
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '44px' }}>
+    <div className="flex flex-col gap-10">
 
-      {/* ── Score + Keywords ── */}
-      <div>
-        <div style={{
-          display: 'flex', flexDirection: 'row', gap: '28px',
-          alignItems: 'flex-start', flexWrap: 'wrap',
-        }}>
-          {/* Score Ring */}
-          <ScoreRing score={result.score} />
+      {/* ══ 1. DASHBOARD HEADER — Score + Keywords in one horizontal band ══ */}
+      <Card className="border-border/70 overflow-hidden">
+        <CardContent className="p-0">
+          <div className="flex flex-row divide-x divide-border/50">
 
-          {/* Keyword Cards */}
-          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', minWidth: 0 }}>
-
-            {/* Matched */}
-            <div style={{
-              background: 'var(--surface-2)', border: '1px solid var(--border)',
-              borderRadius: '14px', padding: '20px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                <h3 style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  Matched
-                </h3>
-                <span style={{
-                  fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px',
-                  background: 'rgba(74,222,128,0.12)', color: 'var(--success)',
-                  border: '1px solid rgba(74,222,128,0.2)',
-                }}>
-                  {result.keywords?.matched?.length ?? 0}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {result.keywords?.matched?.map((kw, i) => (
-                  <span key={kw} className="anim-chip" style={{ animationDelay: `${i * 35}ms` }}>
-                    <span style={{
-                      display: 'inline-block', fontSize: '0.72rem', fontWeight: 600,
-                      padding: '3px 9px', borderRadius: '100px',
-                      background: 'rgba(74,222,128,0.1)', color: 'var(--success)',
-                      border: '1px solid rgba(74,222,128,0.2)',
-                    }}>
-                      {kw}
-                    </span>
-                  </span>
-                ))}
-              </div>
+            {/* Score ring */}
+            <div className="flex items-center justify-center px-8 py-7 lg:w-72 shrink-0">
+              <ScoreRing score={result.score} />
             </div>
 
-            {/* Missing */}
-            <div style={{
-              background: 'var(--surface-2)', border: '1px solid var(--border)',
-              borderRadius: '14px', padding: '20px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                <h3 style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                  Missing
-                </h3>
-                <span style={{
-                  fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px',
-                  background: 'rgba(248,113,113,0.12)', color: 'var(--danger)',
-                  border: '1px solid rgba(248,113,113,0.2)',
-                }}>
-                  {result.keywords?.missing?.length ?? 0}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {result.keywords?.missing?.map((kw, i) => (
-                  <span key={kw} className="anim-chip" style={{ animationDelay: `${i * 35}ms` }}>
-                    <span style={{
-                      display: 'inline-block', fontSize: '0.72rem', fontWeight: 600,
-                      padding: '3px 9px', borderRadius: '100px',
-                      background: 'rgba(248,113,113,0.1)', color: 'var(--danger)',
-                      border: '1px solid rgba(248,113,113,0.2)',
-                    }}>
-                      {kw}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </div>
+            {/* Keyword columns */}
+            <div className="flex flex-1 divide-x divide-border/50 min-w-0">
 
-          </div>
-        </div>
-      </div>
-
-      {/* ── Insights ── */}
-      {result.insights?.length > 0 && (
-        <div>
-          <SectionHeader title="Insights" count={result.insights.length} countColor="var(--accent)" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {result.insights.map((ins, i) => {
-              const cfg = severityConfig[ins.severity] ?? severityConfig.ok
-              return (
-                <div key={i} style={{
-                  borderLeft: `3px solid ${cfg.borderColor}`,
-                  background: cfg.bg,
-                  borderRadius: '0 12px 12px 0',
-                  padding: '18px 20px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                    <span style={{
-                      fontSize: '0.65rem', fontWeight: 800,
-                      letterSpacing: '0.1em', textTransform: 'uppercase',
-                      color: cfg.color, background: cfg.color.replace('var(--', '').replace(')', '') + '1a',
-                      padding: '2px 8px', borderRadius: '100px',
-                      border: `1px solid ${cfg.borderColor}30`,
-                    }}>
-                      {cfg.label}
-                    </span>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)' }}>{ins.title}</span>
-                  </div>
-                  <p style={{ fontSize: '0.8375rem', color: 'var(--muted)', lineHeight: 1.7 }}>{ins.body}</p>
+              {/* Matched */}
+              <div className="flex-1 p-5 min-w-0">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                    Matched
+                  </p>
+                  <Badge variant="outline" className="text-[0.68rem] font-bold rounded-full"
+                    style={{ color: 'var(--success)', background: 'rgba(74,222,128,0.1)', borderColor: 'rgba(74,222,128,0.25)' }}>
+                    {matched.length}
+                  </Badge>
                 </div>
-              )
-            })}
+                <div className="flex flex-wrap gap-1.5">
+                  {matched.map((kw, i) => (
+                    <span key={kw} className="anim-chip" style={{ animationDelay: `${i * 30}ms` }}>
+                      <Badge variant="outline" className="text-[0.7rem] font-medium rounded-full cursor-default"
+                        style={{ color: 'var(--success)', background: 'rgba(74,222,128,0.08)', borderColor: 'rgba(74,222,128,0.18)' }}>
+                        {kw}
+                      </Badge>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Missing */}
+              <div className="flex-1 p-5 min-w-0">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[0.72rem] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                    Missing
+                  </p>
+                  <Badge variant="outline" className="text-[0.68rem] font-bold rounded-full"
+                    style={{ color: 'var(--danger)', background: 'rgba(248,113,113,0.1)', borderColor: 'rgba(248,113,113,0.25)' }}>
+                    {missing.length}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {missing.map((kw, i) => (
+                    <span key={kw} className="anim-chip" style={{ animationDelay: `${i * 30}ms` }}>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Badge variant="outline" className="text-[0.7rem] font-medium rounded-full cursor-default"
+                            style={{ color: 'var(--danger)', background: 'rgba(248,113,113,0.08)', borderColor: 'rgba(248,113,113,0.18)' }}>
+                            {kw}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs border-border"
+                          style={{ background: 'var(--card)', color: 'var(--foreground)' }}>
+                          Add &quot;{kw}&quot; to your resume
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ══ 2. REWRITES — hero section, most prominent ══ */}
+      {result.rewrites?.length > 0 && (
+        <div>
+          <SectionTitle
+            count={result.rewrites.length}
+            countColor="var(--success)"
+            sub="Copy and paste these directly into your resume"
+          >
+            Suggested Rewrites
+          </SectionTitle>
+
+          <div className="flex flex-col gap-5">
+            {result.rewrites.map((rw, i) => (
+              <Card key={i} className="border-border/70 overflow-hidden">
+                <div className="flex flex-row divide-x divide-border/40">
+                  {/* Before — left half */}
+                  <div className="flex-1 px-5 py-5 min-w-0"
+                    style={{ background: 'rgba(248,113,113,0.04)' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[0.62rem] font-black tracking-[0.12em] uppercase"
+                        style={{ color: 'var(--danger)' }}>Before</span>
+                      <div className="flex-1 h-px" style={{ background: 'rgba(248,113,113,0.14)' }} />
+                    </div>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {stripMarkdown(rw.original)}
+                    </p>
+                  </div>
+
+                  {/* After — right half */}
+                  <div className="flex-1 px-5 py-5 min-w-0 flex flex-col"
+                    style={{ background: 'rgba(74,222,128,0.05)' }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[0.62rem] font-black tracking-[0.12em] uppercase"
+                        style={{ color: 'var(--success)' }}>After</span>
+                      <div className="flex-1 h-px" style={{ background: 'rgba(74,222,128,0.14)' }} />
+                      <CopyButton text={stripMarkdown(rw.rewritten)} />
+                    </div>
+                    <p className="text-[0.9375rem] text-foreground/95 leading-relaxed font-medium flex-1">
+                      {stripMarkdown(rw.rewritten)}
+                    </p>
+                  </div>
+                </div>
+              </Card>
+            ))}
           </div>
         </div>
       )}
 
-      {/* ── Rewrites ── */}
-      {result.rewrites?.length > 0 && (
+      {/* ══ 3. INSIGHTS ══ */}
+      {result.insights?.length > 0 && (
         <div>
-          <SectionHeader title="Suggested Rewrites" count={result.rewrites.length} countColor="var(--success)" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {result.rewrites.map((rw, i) => (
-              <div key={i} style={{
-                background: 'var(--surface-2)', border: '1px solid var(--border)',
-                borderRadius: '14px', overflow: 'hidden',
-              }}>
-                {/* Before */}
-                <div style={{
-                  padding: '18px 20px',
-                  borderBottom: '1px solid var(--border)',
-                  background: 'rgba(248,113,113,0.04)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                    <span style={{
-                      fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em',
-                      textTransform: 'uppercase', color: 'var(--danger)',
-                    }}>Before</span>
-                    <div style={{ flex: 1, height: '1px', background: 'rgba(248,113,113,0.15)' }} />
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--muted)', lineHeight: 1.72 }}>
-                    {stripMarkdown(rw.original)}
-                  </p>
-                </div>
-                {/* After */}
-                <div style={{
-                  padding: '18px 20px',
-                  background: 'rgba(74,222,128,0.04)',
-                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px',
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                      <span style={{
-                        fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.1em',
-                        textTransform: 'uppercase', color: 'var(--success)',
-                      }}>After</span>
-                      <div style={{ flex: 1, height: '1px', background: 'rgba(74,222,128,0.15)' }} />
+          <SectionTitle count={result.insights.length} countColor="var(--gold)">
+            Insights
+          </SectionTitle>
+          <div className="flex flex-col gap-3">
+            {result.insights.map((ins, i) => {
+              const s = SEV[ins.severity] ?? SEV.ok
+              return (
+                <div key={i} className="rounded-r-xl overflow-hidden"
+                  style={{ borderLeft: `3px solid ${s.raw}`, background: s.bg }}>
+                  <div className="px-5 py-4">
+                    <div className="flex items-center gap-2.5 mb-2 flex-wrap">
+                      <Badge variant="outline" className="text-[0.62rem] font-black tracking-[0.1em] uppercase rounded-full"
+                        style={{ color: s.color, background: s.raw + '1a', borderColor: s.raw + '35' }}>
+                        {s.label}
+                      </Badge>
+                      <span className="text-sm font-semibold text-foreground">{ins.title}</span>
                     </div>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text)', lineHeight: 1.72 }}>
-                      {stripMarkdown(rw.rewritten)}
-                    </p>
+                    <p className="text-[0.84rem] text-muted-foreground leading-relaxed">{ins.body}</p>
                   </div>
-                  <CopyButton text={stripMarkdown(rw.rewritten)} />
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

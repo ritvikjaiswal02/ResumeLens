@@ -1,8 +1,7 @@
-import { Fraunces, DM_Sans, Geist } from 'next/font/google'
+import { Fraunces, DM_Sans } from 'next/font/google'
 import './globals.css'
-import { cn } from "@/lib/utils";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+import { cn } from '@/lib/utils'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -14,7 +13,7 @@ const fraunces = Fraunces({
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
-  variable: '--font-body',
+  variable: '--font-sans',
   weight: ['300', '400', '500', '600'],
   display: 'swap',
 })
@@ -28,8 +27,10 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={cn(fraunces.variable, dmSans.variable, "font-sans", geist.variable)}>
-      <body>{children}</body>
+    <html lang="en" className={cn(fraunces.variable, dmSans.variable)}>
+      <body>
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
     </html>
   )
 }
