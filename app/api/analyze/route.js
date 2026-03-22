@@ -57,13 +57,14 @@ export async function POST(request) {
       const startOfMonth = new Date(
         new Date().getFullYear(), new Date().getMonth(), 1
       ).toISOString()
-      await supabase.from('profiles').insert({
+      const { error: insertErr } = await supabase.from('profiles').insert({
         id: user.id,
         email: user.email,
         plan: 'free',
         analyses_used: 0,
         analyses_reset_at: startOfMonth,
       })
+      if (insertErr) console.error('[profiles] insert error:', insertErr.message)
       profile = { analyses_used: 0, plan: 'free', analyses_reset_at: startOfMonth }
     }
 
@@ -165,10 +166,12 @@ export async function POST(request) {
     }
 
     // ── Increment usage ────────────────────────────────────────────────
-    await supabase
+    const { error: updateErr } = await supabase
       .from('profiles')
       .update({ analyses_used: profile.analyses_used + 1 })
       .eq('id', user.id)
+    if (updateErr) console.error('[profiles] update error:', updateErr.message)
+    else console.log(`[profiles] analyses_used → ${profile.analyses_used + 1} for ${user.id}`)
 
     return NextResponse.json(result)
 

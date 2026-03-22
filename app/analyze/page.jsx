@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
+import { getUsage } from '@/lib/api'
 
 const JD_MAX = 3000
 const FILE_MAX_BYTES = 5 * 1024 * 1024
@@ -239,9 +239,8 @@ function PaywallModal({ onClose }) {
 /* ─── Analyze Page ────────────────────────────────────────────────────── */
 export default function AnalyzePage() {
   const topRef = useRef(null)
-  const searchParams = useSearchParams()
-  const authError = searchParams.get('auth_error')
-  const { user, loading: authLoading, signOut, signInWithGoogle, signInWithEmail } = useAuth()
+  const { user, session, loading: authLoading, signOut, signInWithGoogle, signInWithEmail } = useAuth()
+  const [authError, setAuthError] = useState(false)
 
   const [resumeFile, setResumeFile]         = useState(null)
   const [fileError, setFileError]           = useState('')
@@ -251,6 +250,16 @@ export default function AnalyzePage() {
   const [error, setError]                   = useState('')
   const [showAuthModal, setShowAuthModal]   = useState(false)
   const [showPaywall, setShowPaywall]       = useState(false)
+  const [usage, setUsage]                   = useState(null)
+
+  useEffect(() => {
+    setAuthError(new URLSearchParams(window.location.search).get('auth_error') === 'true')
+  }, [])
+
+  useEffect(() => {
+    if (!session) { setUsage(null); return }
+    getUsage(session.access_token).then(setUsage)
+  }, [session])
 
   const handleFile  = (f, err) => { setResumeFile(f); setFileError(err || '') }
   const handleClear = ()        => { setResumeFile(null); setFileError('') }
@@ -266,9 +275,6 @@ export default function AnalyzePage() {
 
     setError(''); setResult(null); setLoading(true)
     try {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-
       const formData = new FormData()
       formData.append('resume', resumeFile)
       formData.append('jobDescription', jobDescription)
@@ -282,10 +288,12 @@ export default function AnalyzePage() {
 
       if (res.status === 403) {
         setShowPaywall(true)
+        getUsage(session.access_token).then(setUsage)
       } else if (!res.ok) {
         setError(data.error || 'Something went wrong. Please try again.')
       } else {
         setResult(data)
+        getUsage(session.access_token).then(setUsage)
       }
     } catch {
       setError('Could not reach the server. Please try again.')
@@ -294,7 +302,8 @@ export default function AnalyzePage() {
     }
   }
 
-  const canAnalyze = resumeFile !== null && jobDescription.trim().length > 0 && !loading
+  const atLimit    = usage?.plan === 'free' && usage?.analyses_used >= 2
+  const canAnalyze = resumeFile !== null && jobDescription.trim().length > 0 && !loading && !atLimit
   const hasModal   = showAuthModal || showPaywall
 
   return (
@@ -325,6 +334,21 @@ export default function AnalyzePage() {
             </Link>
             {authLoading ? null : user ? (
               <div className="flex items-center gap-3">
+                {usage && (
+                  usage.plan === 'pro' ? (
+                    <span className="text-xs font-semibold text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full hidden sm:inline">
+                      Pro — unlimited
+                    </span>
+                  ) : (
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border hidden sm:inline ${
+                      usage.analyses_used === 0 ? 'text-gray-500 bg-gray-50 border-gray-200' :
+                      usage.analyses_used === 1 ? 'text-amber-600 bg-amber-50 border-amber-200' :
+                      'text-red-600 bg-red-50 border-red-200'
+                    }`}>
+                      {usage.analyses_used} / 2 analyses
+                    </span>
+                  )
+                )}
                 <span className="text-sm text-gray-500 hidden sm:block">{truncate(user.email, 20)}</span>
                 <button onClick={signOut}
                   className="text-sm font-medium text-gray-600 border border-gray-300 px-4 py-1.5
@@ -377,8 +401,11 @@ export default function AnalyzePage() {
           </div>
 
           {/* Analyze Button */}
-          <div className="flex justify-center mb-8">
-            <button onClick={handleAnalyze} disabled={!canAnalyze}
+          <div className="flex flex-col items-center gap-2 mb-8">
+            <button
+              onClick={handleAnalyze}
+              disabled={!canAnalyze}
+              title={atLimit ? "You've used both free analyses this month. Upgrade to continue." : undefined}
               className="px-10 py-3 bg-indigo-600 text-white font-semibold rounded-lg
                          hover:bg-indigo-700 active:bg-indigo-800
                          disabled:opacity-40 disabled:cursor-not-allowed
@@ -393,6 +420,14 @@ export default function AnalyzePage() {
                 </span>
               ) : 'Analyze My Resume'}
             </button>
+            {atLimit && (
+              <p className="text-xs text-red-500 font-medium">
+                Monthly limit reached.{' '}
+                <button onClick={() => setShowPaywall(true)} className="underline hover:no-underline">
+                  Upgrade for unlimited
+                </button>
+              </p>
+            )}
           </div>
 
           {/* Error */}
