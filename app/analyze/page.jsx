@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/hooks/useAuth'
 import { getUsage } from '@/lib/api'
+import AnalysisResults from '@/components/AnalysisResults'
 
 const JD_MAX = 3000
 const FILE_MAX_BYTES = 5 * 1024 * 1024
@@ -207,7 +208,7 @@ function AuthModal({ onClose, signInWithGoogle, signInWithEmail }) {
 }
 
 /* ─── PaywallModal ────────────────────────────────────────────────────── */
-function PaywallModal({ onClose }) {
+function PaywallModal({ onClose, onUpgrade, upgradeLoading }) {
   return (
     <div className="absolute inset-0 z-50 flex items-start justify-center bg-black/50 pt-24 px-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm relative text-center">
@@ -223,10 +224,14 @@ function PaywallModal({ onClose }) {
         <h2 className="text-lg font-bold text-gray-900 mb-2">
           You&apos;ve used your 2 free analyses this month
         </h2>
-        <p className="text-sm text-gray-500 mb-6">Upgrade to Pro for unlimited analyses</p>
-        <button className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg
-                           hover:bg-indigo-700 transition-colors text-sm mb-3">
-          Upgrade to Pro — $6/month
+        <p className="text-sm text-gray-500 mb-6">Upgrade to Pro for unlimited analyses — ₹499/month</p>
+        <button
+          onClick={onUpgrade}
+          disabled={upgradeLoading}
+          className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg
+                     hover:bg-indigo-700 transition-colors text-sm mb-3
+                     disabled:opacity-60 disabled:cursor-not-allowed">
+          {upgradeLoading ? 'Opening payment…' : 'Upgrade to Pro — ₹499/month'}
         </button>
         <button onClick={onClose} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
           Come back next month
@@ -251,6 +256,8 @@ export default function AnalyzePage() {
   const [showAuthModal, setShowAuthModal]   = useState(false)
   const [showPaywall, setShowPaywall]       = useState(false)
   const [usage, setUsage]                   = useState(null)
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false)
 
   useEffect(() => {
     setAuthError(new URLSearchParams(window.location.search).get('auth_error') === 'true')
@@ -260,6 +267,78 @@ export default function AnalyzePage() {
     if (!session) { setUsage(null); return }
     getUsage(session.access_token).then(setUsage)
   }, [session])
+
+  // Load Razorpay checkout script
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    document.body.appendChild(script)
+    return () => document.body.removeChild(script)
+  }, [])
+
+  const handleUpgrade = async () => {
+    if (!session) return
+    setUpgradeLoading(true)
+    try {
+      const orderRes = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      const orderData = await orderRes.json()
+      if (!orderRes.ok) throw new Error(orderData.error)
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'ResumeLens',
+        description: 'Pro Plan — Unlimited Analyses',
+        order_id: orderData.order_id,
+        prefill: { email: user?.email || '' },
+        theme: { color: '#4f46e5' },
+        handler: async (response) => {
+          const verifyRes = await fetch('/api/razorpay/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          })
+          const verifyData = await verifyRes.json()
+          if (verifyData.success) {
+            setShowPaywall(false)
+            getUsage(session.access_token).then(setUsage)
+            setUpgradeSuccess(true)
+            setTimeout(() => setUpgradeSuccess(false), 4000)
+          } else {
+            alert('Payment verification failed. Please contact support.')
+          }
+          setUpgradeLoading(false)
+        },
+        modal: {
+          ondismiss: () => setUpgradeLoading(false),
+        },
+      }
+
+      const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', (response) => {
+        console.error('[razorpay] payment failed:', response.error)
+        alert('Payment failed: ' + response.error.description)
+        setUpgradeLoading(false)
+      })
+      rzp.open()
+    } catch (err) {
+      console.error('[razorpay] upgrade error:', err)
+      alert('Something went wrong. Please try again.')
+      setUpgradeLoading(false)
+    }
+  }
 
   const handleFile  = (f, err) => { setResumeFile(f); setFileError(err || '') }
   const handleClear = ()        => { setResumeFile(null); setFileError('') }
@@ -314,6 +393,11 @@ export default function AnalyzePage() {
           Sign-in failed — your session may have expired. Please try again.
         </div>
       )}
+      {upgradeSuccess && (
+        <div className="fixed top-0 inset-x-0 z-50 bg-green-600 text-white text-sm text-center py-2 px-4">
+          You&apos;re now on Pro. Unlimited analyses unlocked.
+        </div>
+      )}
 
       {showAuthModal && (
         <AuthModal
@@ -322,16 +406,29 @@ export default function AnalyzePage() {
           signInWithEmail={signInWithEmail}
         />
       )}
-      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+      {showPaywall && (
+        <PaywallModal
+          onClose={() => setShowPaywall(false)}
+          onUpgrade={handleUpgrade}
+          upgradeLoading={upgradeLoading}
+        />
+      )}
 
       <div className={hasModal ? 'pointer-events-none select-none' : ''}>
 
         {/* ── Navbar ── */}
         <nav className="border-b border-gray-200 bg-white sticky top-0 z-10">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-            <Link href="/" className="text-xl font-bold tracking-tight text-indigo-600">
-              ResumeLens
-            </Link>
+            <div className="flex items-center gap-6">
+              <Link href="/" className="text-xl font-bold tracking-tight text-indigo-600">
+                ResumeLens
+              </Link>
+              {user && (
+                <Link href="/history" className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors hidden sm:block">
+                  History
+                </Link>
+              )}
+            </div>
             {authLoading ? null : user ? (
               <div className="flex items-center gap-3">
                 {usage && (
@@ -439,83 +536,9 @@ export default function AnalyzePage() {
 
           {/* Results */}
           {result && (
-            <div className="space-y-10">
-              <div className="border-t border-gray-200 pt-10">
-                <div className="flex flex-col md:flex-row gap-8 items-start">
-                  <ScoreRing score={result.score} />
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-                    <div className="rounded-xl border border-gray-200 p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-gray-700">Matched Keywords</h3>
-                        <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
-                          {result.keywords?.matched?.length ?? 0} matched
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {result.keywords?.matched?.map((kw) => (
-                          <span key={kw} className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full font-medium">{kw}</span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-gray-700">Missing Keywords</h3>
-                        <span className="text-xs font-semibold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">
-                          {result.keywords?.missing?.length ?? 0} missing
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {result.keywords?.missing?.map((kw) => (
-                          <span key={kw} className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">{kw}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Insights</h2>
-                <div className="space-y-3">
-                  {result.insights?.map((ins, i) => {
-                    const s = severityStyle[ins.severity] ?? severityStyle.ok
-                    return (
-                      <div key={i} className={`border-l-4 ${s.border} ${s.bg} rounded-r-xl p-5`}>
-                        <div className="flex items-center gap-2.5 mb-2">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full tracking-wide ${s.badge}`}>
-                            {ins.severity.toUpperCase()}
-                          </span>
-                          <span className="text-sm font-semibold text-gray-800">{ins.title}</span>
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">{ins.body}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Suggested Rewrites</h2>
-                <div className="space-y-4">
-                  {result.rewrites?.map((rw, i) => (
-                    <div key={i} className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                      <div className="bg-red-50 px-5 py-4">
-                        <p className="text-xs font-bold text-red-500 uppercase tracking-wide mb-1.5">Before</p>
-                        <p className="text-sm text-gray-700 leading-relaxed">{stripMarkdown(rw.original)}</p>
-                      </div>
-                      <div className="bg-green-50 px-5 py-4 flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="text-xs font-bold text-green-600 uppercase tracking-wide mb-1.5">After</p>
-                          <p className="text-sm text-gray-700 leading-relaxed">{stripMarkdown(rw.rewritten)}</p>
-                        </div>
-                        <CopyButton text={stripMarkdown(rw.rewritten)} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-center pt-6 border-t border-gray-100">
+            <div>
+              <AnalysisResults result={result} />
+              <div className="flex justify-center pt-6 mt-10 border-t border-gray-100">
                 <button onClick={handleReset}
                   className="px-6 py-2.5 border border-indigo-500 text-indigo-600 font-semibold
                              rounded-lg hover:bg-indigo-50 transition-colors text-sm">

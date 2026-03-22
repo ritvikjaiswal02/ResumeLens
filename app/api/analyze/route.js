@@ -165,6 +165,20 @@ export async function POST(request) {
       }
     }
 
+    // ── Save to history (non-blocking) ────────────────────────────────
+    try {
+      await supabase.from('analyses').insert({
+        user_id: user.id,
+        resume_name: resumeFile.name || 'resume.pdf',
+        jd_snippet: jobDescription.toString().slice(0, 120),
+        score: result.score,
+        verdict: result.verdict,
+        result,
+      })
+    } catch (historyErr) {
+      console.error('[history] save failed (non-blocking):', historyErr)
+    }
+
     // ── Increment usage ────────────────────────────────────────────────
     const { error: updateErr } = await supabase
       .from('profiles')
