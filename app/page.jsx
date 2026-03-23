@@ -20,7 +20,11 @@ export default function LandingPage({ searchParams }) {
           <span className="font-display text-xl font-bold tracking-tight">
             Resume<span style={{ color: 'var(--gold)' }}>Lens</span>
           </span>
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-3">
+            <Link href="/pricing" className="text-sm font-medium transition-colors hover:opacity-80"
+              style={{ color: 'var(--muted-foreground)' }}>
+              Pricing
+            </Link>
             <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
               <Link href="/analyze">Sign In</Link>
             </Button>
