@@ -81,7 +81,7 @@ export default function PricingPage() {
       if (!res.ok) { setActiveLoading(null); return }
       const pass = PASSES.find(p => p.id === planId)
       const rzp = new window.Razorpay({
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: order.key_id,
         amount: order.amount, currency: order.currency, order_id: order.order_id,
         name: 'ResumeLens AI', description: pass?.name || 'Pro Pass',
         prefill: { email: user?.email }, theme: { color: '#ffc174' },
