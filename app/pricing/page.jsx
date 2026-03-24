@@ -10,7 +10,7 @@ const PASSES = [
     id: 'sprint',
     duration: '30 DAYS ACCESS',
     name: '1-Month Sprint',
-    price: '₹149',
+    price: '₹99',
     highlight: false,
     features: [
       'Unlimited AI Bullet Rewrites',
@@ -23,7 +23,7 @@ const PASSES = [
     id: 'season',
     duration: '90 DAYS ACCESS',
     name: 'Placement Season',
-    price: '₹299',
+    price: '₹249',
     highlight: true,
     features: [
       'Everything in the ₹149 plan',

@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 
 const PLANS = {
-  sprint:    { amount: 14900, label: '1-Month Sprint'    },
-  season:    { amount: 29900, label: 'Placement Season'  },
+  sprint:    { amount:  9900, label: '1-Month Sprint'    },
+  season:    { amount: 24900, label: 'Placement Season'  },
   grind:     { amount: 49900, label: 'Off-Campus Grind'  },
   // legacy fallbacks
   lifetime:  { amount: 79900, label: 'Lifetime Access'   },
