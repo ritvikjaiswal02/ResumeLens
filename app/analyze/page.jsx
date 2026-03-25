@@ -378,6 +378,16 @@ export default function AnalyzePage() {
   const [interviewLoading, setInterviewLoading]     = useState(false)
   const [interviewError, setInterviewError]         = useState('')
 
+  const [avatarOpen, setAvatarOpen]               = useState(false)
+  const avatarRef                                 = useRef(null)
+
+  useEffect(() => {
+    if (!avatarOpen) return
+    const handler = (e) => { if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [avatarOpen])
+
   const [previousResult, setPreviousResult]       = useState(null)
   const [comparisonSummary, setComparisonSummary] = useState(null)
   const [reanalyzing, setReanalyzing]             = useState(false)
@@ -716,16 +726,38 @@ export default function AnalyzePage() {
                   </Badge>
                 )
               )}
-              <span className="text-sm hidden sm:block" style={{ color: 'var(--dim)' }}>
-                {truncate(user.email, 22)}
-              </span>
-              <button onClick={signOut}
-                className="text-xs font-semibold px-3 h-7 rounded-lg transition-all"
-                style={{ color: 'var(--dim)', border: '1px solid var(--border)', background: 'transparent' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'rgba(248,113,113,0.35)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--dim)';    e.currentTarget.style.borderColor = 'var(--border)' }}>
-                Sign out
-              </button>
+              {/* Avatar dropdown */}
+              <div ref={avatarRef} className="relative">
+                <button
+                  onClick={() => setAvatarOpen(o => !o)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all"
+                  style={{ background: 'var(--gold)', color: '#0d0d11', letterSpacing: '-0.02em' }}>
+                  {user.email?.[0]?.toUpperCase() ?? '?'}
+                </button>
+                {avatarOpen && (
+                  <div className="absolute right-0 top-10 w-52 rounded-xl shadow-2xl z-50 overflow-hidden"
+                    style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                    <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+                      <p className="text-xs font-semibold truncate" style={{ color: 'var(--foreground)' }}>{user.email}</p>
+                      <p className="text-[0.7rem] mt-0.5" style={{ color: 'var(--dim)' }}>
+                        {usage?.plan === 'pro' ? '✦ Pro Plan' : 'Free Plan'}
+                      </p>
+                    </div>
+                    <Link href="/pricing"
+                      onClick={() => setAvatarOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-colors hover:bg-white/5"
+                      style={{ color: 'var(--muted-foreground)' }}>
+                      Upgrade Plan
+                    </Link>
+                    <button
+                      onClick={() => { setAvatarOpen(false); signOut() }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-colors hover:bg-white/5 text-left"
+                      style={{ color: 'var(--danger)' }}>
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <button onClick={() => setShowAuthModal(true)}
