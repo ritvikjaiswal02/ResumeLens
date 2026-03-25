@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { useRouter } from 'next/navigation'
@@ -47,9 +47,18 @@ const PASSES = [
 ]
 
 export default function PricingPage() {
-  const { user, session, loading } = useAuth()
+  const { user, session, loading, signOut } = useAuth()
   const router = useRouter()
   const [activeLoading, setActiveLoading] = useState(null)
+  const [avatarOpen, setAvatarOpen] = useState(false)
+  const avatarRef = useRef(null)
+
+  useEffect(() => {
+    if (!avatarOpen) return
+    const handler = (e) => { if (avatarRef.current && !avatarRef.current.contains(e.target)) setAvatarOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [avatarOpen])
   const [isPro, setIsPro]               = useState(false)
   const [successPlan, setSuccessPlan]   = useState(null)
   useEffect(() => {
@@ -118,12 +127,40 @@ export default function PricingPage() {
           <Link href="/pricing"  className="text-primary border-b-2 border-primary pb-0.5 no-underline">Pricing</Link>
         </div>
         <div className="flex items-center gap-4">
-          <Link
-            href={user ? '/analyze' : '/login'}
-            className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-5 py-2 rounded-xl font-bold text-sm tracking-tight hover:opacity-90 transition-all duration-150 no-underline"
-          >
-            {user ? 'Dashboard →' : 'Sign In'}
-          </Link>
+          {user ? (
+            <div ref={avatarRef} className="relative">
+              <button
+                onClick={() => setAvatarOpen(o => !o)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-black"
+                style={{ background: 'var(--gold)', color: '#0d0d11' }}>
+                {user.email?.[0]?.toUpperCase() ?? '?'}
+              </button>
+              {avatarOpen && (
+                <div className="absolute right-0 top-10 w-52 rounded-xl shadow-2xl z-50 overflow-hidden"
+                  style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                  <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+                    <p className="text-xs font-semibold truncate" style={{ color: 'var(--foreground)' }}>{user.email}</p>
+                    <p className="text-[0.7rem] mt-0.5" style={{ color: 'var(--dim)' }}>{isPro ? '✦ Pro Plan' : 'Free Plan'}</p>
+                  </div>
+                  <Link href="/analyze" onClick={() => setAvatarOpen(false)}
+                    className="flex items-center px-4 py-2.5 text-xs font-medium transition-colors hover:bg-white/5 no-underline"
+                    style={{ color: 'var(--muted-foreground)' }}>
+                    Dashboard
+                  </Link>
+                  <button onClick={() => { setAvatarOpen(false); signOut() }}
+                    className="w-full flex items-center px-4 py-2.5 text-xs font-medium transition-colors hover:bg-white/5 text-left"
+                    style={{ color: 'var(--danger)' }}>
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link href="/login"
+              className="bg-gradient-to-br from-primary to-primary-container text-on-primary px-5 py-2 rounded-xl font-bold text-sm tracking-tight hover:opacity-90 transition-all duration-150 no-underline">
+              Sign In
+            </Link>
+          )}
         </div>
       </nav>
 
