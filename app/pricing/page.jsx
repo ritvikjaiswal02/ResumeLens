@@ -120,7 +120,7 @@ export default function PricingPage() {
       {/* ── Navbar ── */}
       <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-16 bg-surface-container-low">
         <Link href="/" className="no-underline">
-          <span className="font-headline text-xl font-bold tracking-tighter text-primary">ResumeLens</span>
+          <span className="font-headline text-xl font-bold tracking-tighter" style={{ color: 'var(--foreground)' }}>Resume<span style={{ color: 'var(--gold)' }}>Lens</span></span>
         </Link>
         <div className="hidden md:flex items-center gap-8 font-label text-sm">
           <Link href="/"         className="text-on-surface-variant hover:text-on-surface transition-colors no-underline">Home</Link>
