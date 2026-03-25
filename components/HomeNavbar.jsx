@@ -23,7 +23,7 @@ export default function HomeNavbar() {
       style={{ background: 'rgba(13,13,17,0.8)', backdropFilter: 'blur(16px)' }}>
       <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
         <span className="font-display text-xl font-bold tracking-tight">
-          Resume<span style={{ color: 'var(--gold)' }}>Lens</span>
+          Resume<span style={{ color: 'var(--gold)' }}>Max</span>
         </span>
         <nav className="flex items-center gap-3">
           <Link href="/pricing" className="text-sm font-medium transition-colors hover:opacity-80"

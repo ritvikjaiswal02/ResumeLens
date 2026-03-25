@@ -84,7 +84,7 @@ export default function PricingPage() {
       const rzp = new window.Razorpay({
         key: order.key_id,
         amount: order.amount, currency: order.currency, order_id: order.order_id,
-        name: 'ResumeLens AI', description: pass?.name || 'Pro Pass',
+        name: 'ResumeMax', description: pass?.name || 'Pro Pass',
         prefill: { email: user?.email }, theme: { color: '#ffc174' },
         handler: async (response) => {
           try {
@@ -120,7 +120,7 @@ export default function PricingPage() {
       {/* ── Navbar ── */}
       <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-16 bg-surface-container-low">
         <Link href="/" className="no-underline">
-          <span className="font-headline text-xl font-bold tracking-tighter" style={{ color: 'var(--foreground)' }}>Resume<span style={{ color: 'var(--gold)' }}>Lens</span></span>
+          <span className="font-headline text-xl font-bold tracking-tighter" style={{ color: 'var(--foreground)' }}>Resume<span style={{ color: 'var(--gold)' }}>Max</span></span>
         </Link>
         <div className="hidden md:flex items-center gap-8 font-label text-sm">
           <Link href="/"         className="text-on-surface-variant hover:text-on-surface transition-colors no-underline">Home</Link>
@@ -323,7 +323,7 @@ export default function PricingPage() {
       <footer className="w-full py-8 mt-auto border-t border-outline-variant/15 bg-surface">
         <div className="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto gap-4">
           <p className="font-body text-xs text-on-surface-variant">
-            © 2026 ResumeLens AI · Digital Career Precision.
+            © 2026 ResumeMax · Digital Career Precision.
           </p>
           <div className="flex gap-6">
             {['Privacy Policy', 'Terms of Service', 'API Docs', 'Contact Support'].map(l => (

@@ -53,7 +53,7 @@ export default function LoginPage() {
           zIndex: 10,
         }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
-            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', color: '#f0f0f4' }}>Resume<span style={{ color: '#e9b94c' }}>Lens</span></span>
+            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.03em', color: '#f0f0f4' }}>Resume<span style={{ color: '#e9b94c' }}>Max</span></span>
           </Link>
           <Link href="/pricing" style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', textDecoration: 'none' }}>Pricing</Link>
         </div>

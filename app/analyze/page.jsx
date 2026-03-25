@@ -260,7 +260,7 @@ function AuthModal({ onClose, signInWithGoogle, signInWithEmail }) {
         <button onClick={onClose}
           className="absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-lg text-base"
           style={{ color: 'var(--dim)' }}>✕</button>
-        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--foreground)' }}>Sign in to ResumeLens</h2>
+        <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--foreground)' }}>Sign in to ResumeMax</h2>
         <p className="text-sm mb-6" style={{ color: 'var(--muted-foreground)' }}>Get 5 free analyses per month</p>
 
         <button onClick={signInWithGoogle}

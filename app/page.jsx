@@ -286,7 +286,7 @@ export default function LandingPage({ searchParams }) {
 
       {/* ── Footer ── */}
       <footer className="py-6 text-center text-[0.8rem] border-t border-border/40 text-muted-foreground/40">
-        ResumeLens © 2026 · Built for job seekers
+        ResumeMax © 2026 · Built for job seekers
       </footer>
 
     </div>

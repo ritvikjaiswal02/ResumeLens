@@ -53,7 +53,7 @@ export default function AnalysisDetailPage() {
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/">
-              <span className="font-display text-xl font-bold tracking-tight">Resume<span style={{ color: 'var(--gold)' }}>Lens</span></span>
+              <span className="font-display text-xl font-bold tracking-tight">Resume<span style={{ color: 'var(--gold)' }}>Max</span></span>
             </Link>
             <Link href="/history"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
