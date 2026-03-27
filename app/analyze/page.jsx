@@ -694,7 +694,7 @@ export default function AnalyzePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/">
-              <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--foreground)' }}>Resume<span style={{ color: 'var(--gold)' }}>Lens</span></span>
+              <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--foreground)' }}>Resume<span style={{ color: 'var(--gold)' }}>Max</span></span>
             </Link>
             {user && (
               <Link href="/history"
