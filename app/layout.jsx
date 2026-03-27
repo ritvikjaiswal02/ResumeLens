@@ -31,7 +31,7 @@ export const metadata = {
     siteName: 'ResumeMax',
     images: [
       {
-        url: '/login-hero.png',
+        url: '/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'ResumeMax — ATS Resume Analyzer',
@@ -44,7 +44,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'ResumeMax — Stop Getting Ghosted by ATS Filters',
     description: 'Get your ATS score, missing keywords & AI bullet rewrites in 30 seconds. 5 free analyses/month.',
-    images: ['/login-hero.png'],
+    images: ['/og-image.jpg'],
   },
   icons: {
     icon: '/favicon.ico',
