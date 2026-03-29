@@ -28,7 +28,7 @@ const PASSES = [
     price: '₹249',
     highlight: true,
     features: [
-      'Everything in the ₹149 plan',
+      'Everything in the ₹99 plan',
       '90 full days of access',
       'Best value for the placement rush',
     ],
@@ -40,7 +40,7 @@ const PASSES = [
     price: '₹499',
     highlight: false,
     features: [
-      'Everything in the ₹299 plan',
+      'Everything in the ₹249 plan',
       '180 full days of access',
       'Perfect for off-campus hunting',
     ],
