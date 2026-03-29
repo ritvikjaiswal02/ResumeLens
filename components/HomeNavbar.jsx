@@ -3,10 +3,13 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
+import { getUsage } from '@/lib/api'
 
 export default function HomeNavbar() {
-  const { user, signOut } = useAuth()
+  const { user, session, signOut } = useAuth()
   const [avatarOpen, setAvatarOpen] = useState(false)
+  const [referralCode, setReferralCode] = useState(null)
+  const [copied, setCopied] = useState(false)
   const avatarRef = useRef(null)
 
   useEffect(() => {
@@ -17,6 +20,18 @@ export default function HomeNavbar() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [avatarOpen])
+
+  useEffect(() => {
+    if (!session?.access_token) return
+    getUsage(session.access_token).then(u => { if (u?.referral_code) setReferralCode(u.referral_code) })
+  }, [session])
+
+  const copyReferral = () => {
+    if (!referralCode) return
+    navigator.clipboard.writeText(`https://resumemax.in?ref=${referralCode}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60"
@@ -57,6 +72,14 @@ export default function HomeNavbar() {
                       style={{ color: 'var(--muted-foreground)' }}>
                       Upgrade Plan
                     </Link>
+                    {referralCode && (
+                      <button
+                        onClick={copyReferral}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-colors hover:bg-white/5 text-left"
+                        style={{ color: 'var(--gold)' }}>
+                        {copied ? '✓ Link copied!' : '🎁 Refer & Earn +2 analyses'}
+                      </button>
+                    )}
                     <button
                       onClick={() => { setAvatarOpen(false); signOut() }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-colors hover:bg-white/5 text-left"

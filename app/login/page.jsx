@@ -11,15 +11,21 @@ export default function LoginPage() {
   const [email, setEmail]     = useState('')
   const [sent, setSent]       = useState(false)
   const [sending, setSending] = useState(false)
+  const [ref, setRef]         = useState(null)
 
   useEffect(() => {
     if (user) router.replace('/analyze')
   }, [user, router])
 
+  useEffect(() => {
+    const stored = localStorage.getItem('rmx_ref')
+    if (stored) setRef(stored)
+  }, [])
+
   const handleMagicLink = async () => {
     if (!email.trim()) return
     setSending(true)
-    await signInWithEmail(email.trim())
+    await signInWithEmail(email.trim(), ref)
     setSent(true)
     setSending(false)
   }
@@ -101,7 +107,7 @@ export default function LoginPage() {
           {/* Google button */}
           <button
             className="login-google"
-            onClick={signInWithGoogle}
+            onClick={() => signInWithGoogle(ref)}
             style={{
               width: '100%', height: 44, borderRadius: 12,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,

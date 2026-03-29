@@ -11,11 +11,11 @@ export async function GET(request) {
 
   let { data: profile } = await supabase
     .from('profiles')
-    .select('analyses_used, plan, plan_id, plan_expires_at, free_pro_used')
+    .select('analyses_used, plan, plan_id, plan_expires_at, free_pro_used, bonus_analyses, referral_code')
     .eq('id', user.id)
     .single()
 
-  if (!profile) profile = { analyses_used: 0, plan: 'free', plan_id: null, plan_expires_at: null, free_pro_used: false }
+  if (!profile) profile = { analyses_used: 0, plan: 'free', plan_id: null, plan_expires_at: null, free_pro_used: false, bonus_analyses: 0, referral_code: null }
 
   /* ── Auto-expire: if plan_expires_at is in the past, downgrade to free ── */
   let effectivePlan = profile.plan
@@ -33,12 +33,15 @@ export async function GET(request) {
     }
   }
 
+  const bonus = profile.bonus_analyses ?? 0
   return NextResponse.json({
     analyses_used:   profile.analyses_used,
     plan:            effectivePlan,
     plan_id:         profile.plan_id,
     plan_expires_at: profile.plan_expires_at,
     free_pro_used:   profile.free_pro_used ?? false,
-    limit:           5,
+    bonus_analyses:  bonus,
+    referral_code:   profile.referral_code ?? null,
+    limit:           5 + bonus,
   })
 }

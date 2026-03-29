@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import Reveal from '@/components/Reveal'
 import HomeNavbar from '@/components/HomeNavbar'
+import { Suspense } from 'react'
+import RefTracker from '@/components/RefTracker'
 
 export default function LandingPage({ searchParams }) {
   if (searchParams?.error_code) {
@@ -15,6 +17,7 @@ export default function LandingPage({ searchParams }) {
   return (
     <div className="min-h-screen" style={{ background: 'var(--background)' }}>
 
+      <Suspense fallback={null}><RefTracker /></Suspense>
       {/* ── Navbar ── */}
       <HomeNavbar />
 

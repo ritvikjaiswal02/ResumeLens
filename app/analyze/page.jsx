@@ -379,7 +379,16 @@ export default function AnalyzePage() {
   const [interviewError, setInterviewError]         = useState('')
 
   const [avatarOpen, setAvatarOpen]               = useState(false)
+  const [referralCopied, setReferralCopied]       = useState(false)
   const avatarRef                                 = useRef(null)
+
+  const copyReferral = () => {
+    const code = usage?.referral_code
+    if (!code) return
+    navigator.clipboard.writeText(`https://resumemax.in?ref=${code}`)
+    setReferralCopied(true)
+    setTimeout(() => setReferralCopied(false), 2000)
+  }
 
   useEffect(() => {
     if (!avatarOpen) return
@@ -665,7 +674,8 @@ export default function AnalyzePage() {
     topRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const atLimit    = usage?.plan === 'free' && usage?.analyses_used >= 5
+  const freeLimit  = 5 + (usage?.bonus_analyses ?? 0)
+  const atLimit    = usage?.plan === 'free' && usage?.analyses_used >= freeLimit
   const bothReady  = !!resumeFile && jobDescription.trim().length > 0
   const canAnalyze = bothReady && !loading && !atLimit
 
@@ -722,7 +732,7 @@ export default function AnalyzePage() {
                         ? { color: 'var(--warn)', background: 'rgba(251,146,60,0.08)', borderColor: 'rgba(251,146,60,0.22)' }
                         : { color: 'var(--danger)', background: 'rgba(248,113,113,0.08)', borderColor: 'rgba(248,113,113,0.22)' }
                     }>
-                    {usage.analyses_used} / 5 analyses
+                    {usage.analyses_used} / {freeLimit} analyses
                   </Badge>
                 )
               )}
@@ -749,6 +759,14 @@ export default function AnalyzePage() {
                       style={{ color: 'var(--muted-foreground)' }}>
                       Upgrade Plan
                     </Link>
+                    {usage?.referral_code && (
+                      <button
+                        onClick={copyReferral}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-colors hover:bg-white/5 text-left"
+                        style={{ color: 'var(--gold)' }}>
+                        {referralCopied ? '✓ Link copied!' : '🎁 Refer & Earn +2 analyses'}
+                      </button>
+                    )}
                     <button
                       onClick={() => { setAvatarOpen(false); signOut() }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium transition-colors hover:bg-white/5 text-left"

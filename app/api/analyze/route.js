@@ -48,7 +48,7 @@ export async function POST(request) {
     // ── Usage check ────────────────────────────────────────────────────
     let { data: profile } = await supabase
       .from('profiles')
-      .select('analyses_used, plan, analyses_reset_at')
+      .select('analyses_used, plan, analyses_reset_at, bonus_analyses')
       .eq('id', user.id)
       .single()
 
@@ -85,9 +85,10 @@ export async function POST(request) {
     }
 
     // Enforce free limit
-    if (profile.plan === 'free' && profile.analyses_used >= 2) {
+    const freeLimit = 5 + (profile.bonus_analyses ?? 0)
+    if (profile.plan === 'free' && profile.analyses_used >= freeLimit) {
       return NextResponse.json(
-        { error: 'limit_reached', message: 'You have used your 2 free analyses this month' },
+        { error: 'limit_reached', message: `You have used your ${freeLimit} free analyses this month` },
         { status: 403 }
       )
     }
@@ -140,7 +141,7 @@ export async function POST(request) {
       `  - Missing 2–3 minor keywords should NOT drag an otherwise strong resume below 60.\n` +
       `- verdict thresholds: score >= 75 → "strong", score >= 55 → "good", score >= 35 → "needs_work", else → "poor"\n` +
       `- provide 4-6 insights ordered by severity (fix first)\n` +
-      `- provide 2-3 rewrites for the weakest resume bullets\n` +
+      `- rewrites: include ALL bullet points from the resume's Experience section that would benefit from improvement — however many that is. Skip bullets that are already strong and well-matched to the JD. Do not cap at 2-3; if the resume has 8 weak bullets, rewrite all 8.\n` +
       `- never invent facts, use [X] for unknown metrics\n` +
       `- matched/missing arrays: 5-15 items each\n` +
       `- keywords must be SHORT (1-4 words max): skills, tools, technologies, or brief role terms — NEVER full sentences or job responsibilities\n` +

@@ -28,16 +28,15 @@ export function useAuth() {
 
   const signOut = () => supabase.auth.signOut()
 
-  const signInWithGoogle = () =>
-    supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
+  const signInWithGoogle = (ref) => {
+    const redirectTo = `${window.location.origin}/auth/callback${ref ? `?ref=${ref}` : ''}`
+    return supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } })
+  }
 
-  const signInWithEmail = (email) =>
+  const signInWithEmail = (email, ref) =>
     supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback${ref ? `?ref=${ref}` : ''}` },
     })
 
   return { user, session, loading, signOut, signInWithGoogle, signInWithEmail }
