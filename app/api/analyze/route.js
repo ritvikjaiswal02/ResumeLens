@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { validatePDFMeta, validatePDFBytes, validateJD, checkRateLimit } from '@/lib/validate'
 
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
@@ -11,24 +12,17 @@ export async function POST(request) {
     const resumeFile    = formData.get('resume')
     const jobDescription = formData.get('jobDescription')
 
-    if (!resumeFile || !jobDescription) {
-      return NextResponse.json(
-        { error: 'Missing resume or job description' },
-        { status: 400 }
-      )
+    // ── Input validation (before auth to fail fast) ────────────────────
+    const pdfCheck = validatePDFMeta(resumeFile)
+    if (!pdfCheck.ok) {
+      return NextResponse.json({ error: pdfCheck.error }, { status: 400 })
     }
-    if (resumeFile.type !== 'application/pdf') {
-      return NextResponse.json(
-        { error: 'Only PDF files are accepted' },
-        { status: 400 }
-      )
+
+    const jdCheck = validateJD(jobDescription)
+    if (!jdCheck.ok) {
+      return NextResponse.json({ error: jdCheck.error }, { status: 400 })
     }
-    if (resumeFile.size > 5 * 1024 * 1024) {
-      return NextResponse.json(
-        { error: 'File too large. Max size is 5MB.' },
-        { status: 400 }
-      )
-    }
+    const safeJD = jdCheck.value
 
     // ── Auth check ─────────────────────────────────────────────────────
     const authHeader = request.headers.get('authorization')
@@ -41,6 +35,15 @@ export async function POST(request) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token)
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // ── Rate limit (per user, in-process) ─────────────────────────────
+    const rl = checkRateLimit(user.id, { maxRequests: 20, windowMs: 60_000 })
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a moment and try again.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      )
     }
 
     console.log(`[analyze] user=${user.id} | ${resumeFile.name} | ${(resumeFile.size / 1024).toFixed(1)} KB`)
@@ -98,6 +101,9 @@ export async function POST(request) {
     // PDF types — including vector/Canva-style PDFs where pdf-parse
     // returns empty text (text rendered as Bezier paths, no text ops).
     const arrayBuffer = await resumeFile.arrayBuffer()
+    if (!validatePDFBytes(arrayBuffer)) {
+      return NextResponse.json({ error: 'Invalid PDF file content' }, { status: 400 })
+    }
     const pdfBase64 = Buffer.from(arrayBuffer).toString('base64')
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -163,7 +169,7 @@ export async function POST(request) {
       `  For GOOD items: only highlight genuine strengths (has skills section, has bullets, contact info present)\n` +
       `  Provide 3-5 items MAXIMUM. Quality over quantity. If the resume is structurally solid, say so — do not invent warnings.\n` +
       `  Each description: state what is wrong/good, why it matters to ATS, and exactly what to fix (if applicable).\n\n` +
-      `JOB DESCRIPTION:\n${jobDescription.toString().slice(0, 3000)}`
+      `JOB DESCRIPTION:\n${safeJD.slice(0, 3000)}`
 
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
@@ -204,15 +210,14 @@ export async function POST(request) {
 
     // ── Save to history (non-blocking) ────────────────────────────────
     // Extract job title: first non-empty line of the JD, max 80 chars
-    const jdText = jobDescription.toString()
-    const jobTitle = jdText.split('\n').map(l => l.trim()).find(l => l.length > 2)?.slice(0, 80) || 'Resume Analysis'
+    const jobTitle = safeJD.split('\n').map(l => l.trim()).find(l => l.length > 2)?.slice(0, 80) || 'Resume Analysis'
 
     try {
       await supabase.from('analyses').insert({
         user_id: user.id,
         resume_name: resumeFile.name || 'resume.pdf',
-        jd_snippet: jobDescription.toString().slice(0, 120),
-        jd_text: jobDescription.toString().slice(0, 3000),
+        jd_snippet: safeJD.slice(0, 120),
+        jd_text: safeJD.slice(0, 3000),
         job_title: jobTitle,
         score: result.score,
         verdict: result.verdict,

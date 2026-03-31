@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { validatePDFMeta, validatePDFBytes, validateJD, sanitizeString } from '@/lib/validate'
 
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
@@ -33,17 +34,24 @@ export async function POST(request) {
     const formData      = await request.formData()
     const resumeFile    = formData.get('resume')
     const jobDescription = formData.get('jobDescription')
-    const userName      = formData.get('userName') || ''
+    const userName      = sanitizeString(formData.get('userName'))
 
-    if (!resumeFile || !jobDescription) {
-      return NextResponse.json({ error: 'Missing resume or job description' }, { status: 400 })
+    const pdfCheck = validatePDFMeta(resumeFile)
+    if (!pdfCheck.ok) {
+      return NextResponse.json({ error: pdfCheck.error }, { status: 400 })
     }
-    if (resumeFile.type !== 'application/pdf') {
-      return NextResponse.json({ error: 'Only PDF files are accepted' }, { status: 400 })
+
+    const jdCheck = validateJD(jobDescription)
+    if (!jdCheck.ok) {
+      return NextResponse.json({ error: jdCheck.error }, { status: 400 })
     }
+    const safeJD = jdCheck.value
 
     // ── Encode PDF ──────────────────────────────────────────────────────
     const arrayBuffer = await resumeFile.arrayBuffer()
+    if (!validatePDFBytes(arrayBuffer)) {
+      return NextResponse.json({ error: 'Invalid PDF file content' }, { status: 400 })
+    }
     const pdfBase64   = Buffer.from(arrayBuffer).toString('base64')
 
     const prompt =
@@ -60,7 +68,7 @@ export async function POST(request) {
       `- End with a strong closing line and "Sincerely,\\n${userName || '[Your Name]'}"\n` +
       `- Plain text only — no markdown, no asterisks, no bullet points\n` +
       `- Return ONLY the cover letter text, nothing else\n\n` +
-      `JOB DESCRIPTION:\n${jobDescription.toString().slice(0, 3000)}`
+      `JOB DESCRIPTION:\n${safeJD.slice(0, 3000)}`
 
     const geminiRes = await fetch(`${GEMINI_API_URL}?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
